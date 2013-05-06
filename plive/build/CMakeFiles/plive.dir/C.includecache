@@ -9,4 +9,10 @@
 /home/jibbo/projects/plive/main.c
 stdio.h
 -
+ctype.h
+-
+stdlib.h
+-
+unistd.h
+-
 
