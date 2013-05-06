@@ -80,5 +80,58 @@ main (int argc, char **argv)
     for (index = optind; index < argc; index++)
         printf ("Non-option argument %s\n", argv[index]);
 
+
+
+
+    // Start with project
+    // .....................................................................................
+
+    char path1[] = argv[0];     // Path of first file
+    char path2[] = argv[1];     // Path of second file
+
+    // true is both path are files or directories!
+    // false if one path rappresent a file and the other rappresent a directory!
+    bool comparable = !system("test -d " + path1) && !system("test -d " + path2);
+    if(comparable) {
+        printf("Both paths are directories!\n");
+
+        // List all files directory 1
+        // ---------------------
+        // List all files directory 2
+
+    }
+    comparable = !system("test -f " + path1) && !system("test -f " + path2);
+    if(comparable) {
+        printf("Both paths are files!\n");
+
+        FILE *file1;    // First file
+        FILE *file2;    // Second file
+
+        if ((file1 = fopen(path1,"r")) == NULL)  {
+            // Impossibile aprire path1
+            perror(path1);
+            exit(1);
+        }
+        else if ((file2 = fopen(path2,"r")) == NULL)  {
+            // Impossibile aprire path1
+            perror(path2);
+            exit(1);
+        }
+        else {
+            fclose(file1)
+            fclose(file2);
+        }
+        exit(0);
+
+
+        // Print file 1
+        // ---------------------
+        // Print file 2
+
+    }
+    else {
+        printf("You cannot compare two different kind of file!\n");
+    }
+
     return 0;
 }
