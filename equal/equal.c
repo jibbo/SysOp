@@ -1,6 +1,7 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 /*
@@ -86,8 +87,10 @@ main (int argc, char **argv)
     // Start with project
     // .....................................................................................
 
-    char path1[] = argv[0];     // Path of first file
-    char path2[] = argv[1];     // Path of second file
+    char* path1;
+    strcpy(path1,argv[0]);     // Path of first file
+    char* path2;
+    strcpy(path2,argv[1]);     // Path of second file
 
     // true is both path are files or directories!
     // false if one path rappresent a file and the other rappresent a directory!
@@ -118,7 +121,7 @@ main (int argc, char **argv)
             exit(1);
         }
         else {
-            fclose(file1)
+            fclose(file1);
             fclose(file2);
         }
         exit(0);
