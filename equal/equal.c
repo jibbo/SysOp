@@ -4,6 +4,8 @@
 #include <string.h>
 #include <unistd.h>
 
+using namespace std;
+
 /*
  % testopt
      aflag = 0, bflag = 0, cvalue = (null)
@@ -40,6 +42,7 @@
      aflag = 1, bflag = 0, cvalue = (null)
      Non-option argument -
      */
+
 main (int argc, char **argv)
 {
     int aflag = 0;
@@ -81,20 +84,33 @@ main (int argc, char **argv)
     for (index = optind; index < argc; index++)
         printf ("Non-option argument %s\n", argv[index]);
 
+    // Copy argv parameters into path1 and path2..
+    char* path1;
+    path1 = (char*) malloc(sizeof(argv[1]));
+    path1 = strcpy(path1, argv[1]);
+    char* path2;
+    path2 = (char*) malloc(sizeof(argv[2]));
+    path2 = strcpy(path2, argv[2]);
 
+    // File test for both filepath
+    char* test1 = (char*) malloc(sizeof("test -d ") + sizeof(argv[1]));
+    test1 = strcpy(test1, "test -d ");
+    strcat(test1, path1);
 
+    char* test2 = (char*) malloc(sizeof("test -d ") + sizeof(argv[2]));
+    test2 = strcpy(test2, "test -d ");
+    test2 = strcat(test2, path2);
 
+    printf("\n\ntest1: %s\n", test1);
+    printf("\n\ntest2: %s\n", test2);
+
+/*
     // Start with project
     // .....................................................................................
 
-    char* path1;
-    strcpy(path1,argv[0]);     // Path of first file
-    char* path2;
-    strcpy(path2,argv[1]);     // Path of second file
-
     // true is both path are files or directories!
     // false if one path rappresent a file and the other rappresent a directory!
-    bool comparable = !system("test -d " + path1) && !system("test -d " + path2);
+    bool comparable = !system(test1) && !system(test2);
     if(comparable) {
         printf("Both paths are directories!\n");
 
@@ -103,7 +119,16 @@ main (int argc, char **argv)
         // List all files directory 2
 
     }
-    comparable = !system("test -f " + path1) && !system("test -f " + path2);
+
+    // Directory test for both filepath
+    test1 = (char*) malloc(sizeof("test -d ") + sizeof(argv[1]));
+    test1 = strcpy(test1, "test -d ");
+    test1 = strcat(test1, path1);
+    test2 = (char*) malloc(sizeof("test -d ") + sizeof(argv[2]));
+    test2 = strcpy(test2, "test -d ");
+    test2 = strcat(test2, path2);
+
+    comparable = !system(test1) && !system(test2);
     if(comparable) {
         printf("Both paths are files!\n");
 
@@ -135,6 +160,6 @@ main (int argc, char **argv)
     else {
         printf("You cannot compare two different kind of file!\n");
     }
-
+*/
     return 0;
 }
