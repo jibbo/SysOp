@@ -4,6 +4,17 @@
 #include <string.h>
 #include <unistd.h>
 
+
+struct str_file {
+
+    char * path;
+    FILE * file;
+    char * line;
+    size_t size;
+    ssize_t read;
+
+};
+
 /*
  % testopt
      aflag = 0, bflag = 0, cvalue = (null)
@@ -142,33 +153,55 @@ main (int argc, char **argv)
     if(comparable) {
         printf("Both paths are files!\n");
 
-        FILE *file1;    // First file
-        FILE *file2;    // Second file
 
-        if ((file1 = fopen(argv[1],"r")) == NULL)  {
+        struct str_file * file1;
+        struct str_file * file2;
+        file1 = (struct str_file *) malloc(sizeof(struct str_file));
+        file2 = (struct str_file *) malloc(sizeof(struct str_file));
+
+        if ((file1->file = fopen(argv[1],"rb")) == NULL)  {
             // Impossibile aprire path1
             perror(argv[1]);
             exit(EXIT_FAILURE);
         }
-        else if ((file2 = fopen(argv[2],"r")) == NULL)  {
+        else if ((file2->file = fopen(argv[2],"rb")) == NULL)  {
             // Impossibile aprire path1
             perror(argv[2]);
             exit(EXIT_FAILURE);
         }
-        else {
-                char * line = NULL;
-                size_t len = 0;
-                ssize_t read;
+        else
+        {
 
-                while ((read = getline(&line, &len, file1)) != -1) {
-                   printf("Retrieved line of length %zu :\n", read);
-                   printf("%s", line);
-                }
+            // Obtain file1 dimension
+            fseek(file1->file, 0, SEEK_END);
+            file1->size = ftell(file1->file);
+            file1->line = malloc(file1->size);
+            fseek(file1->file, 0, SEEK_SET);  // Return to the top of the file
 
-                if (line) { free(line); }
+            // Obtain file2 dimension
+            fseek(file2->file, 0, SEEK_END);
+            file2->size = ftell(file2->file);
+            file2->line = malloc(file2->size);
+            fseek(file2->file, 0, SEEK_SET);  // Return to the top of the file
 
-                fclose(file1);
-                fclose(file2);
+            //printf("file1->path: %s\n", file1->path);
+            printf("file1->size: %d bytes\n", file1->size);
+            printf("-----------------------------------");
+            //printf("file2->path: %s\n", file2->path);
+            printf("file2->size: %d bytes\n", file2->size);
+            
+            
+            // Read the entire file1 and file2
+            file1->read = fread(file1->line, file1->size, 1, file1->file);
+            file2->read = fread(file2->line, file2->size, 1, file2->file);
+
+            printf("file1:\n\nRead: \n%s\n\n----------------------------", file1->line);
+            printf("file2:\n\nRead: \n%s\n\n----------------------------", file2->line);
+            free(file1->line);
+            free(file2->line);
+
+            fclose(file1->file);
+            fclose(file2->file);
         }
         exit(0);
 
