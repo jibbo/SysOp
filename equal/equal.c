@@ -93,16 +93,9 @@ main (int argc, char **argv)
     for (index = optind; index < argc; index++)
         printf ("Non-option argument %s\n", argv[index]);
 
-    // Copy argv parameters into path1 and path2..
-    /*
-    char* path1;
-    path1 = (char*) malloc(sizeof(argv[1]));
-    path1 = strcpy(path1, argv[1]);
-    char* path2;
-    path2 = (char*) malloc(sizeof(argv[2]));
-    path2 = strcpy(path2, argv[2]);
 
 
+/*
     free(path1);
     free(path2);
 
@@ -153,50 +146,55 @@ main (int argc, char **argv)
     if(comparable) {
         printf("Both paths are files!\n");
 
-
         struct str_file * file1;
         struct str_file * file2;
         file1 = (struct str_file *) malloc(sizeof(struct str_file));
         file2 = (struct str_file *) malloc(sizeof(struct str_file));
 
-        if ((file1->file = fopen(argv[1],"rb")) == NULL)  {
+
+
+        // Copy argv parameters into path1 and path2..
+        file1->path = (char*) malloc(sizeof(argv[1]));
+        file1->path = strcpy(file1->path, argv[1]);
+        file2->path = (char*) malloc(sizeof(argv[2]));
+        file2->path = strcpy(file2->path, argv[2]);
+
+        if ((file1->file = fopen(file1->path,"rb")) == NULL)  {
             // Impossibile aprire path1
-            perror(argv[1]);
+            perror(file1->path);
             exit(EXIT_FAILURE);
         }
-        else if ((file2->file = fopen(argv[2],"rb")) == NULL)  {
+        else if ((file2->file = fopen(file2->path,"rb")) == NULL)  {
             // Impossibile aprire path1
-            perror(argv[2]);
+            perror(file2->path);
             exit(EXIT_FAILURE);
         }
         else
         {
-
-            // Obtain file1 dimension
+            // Obtain file1 dimension in bytes
             fseek(file1->file, 0, SEEK_END);
             file1->size = ftell(file1->file);
             file1->line = malloc(file1->size);
             fseek(file1->file, 0, SEEK_SET);  // Return to the top of the file
 
-            // Obtain file2 dimension
+            // Obtain file2 dimension in bytes
             fseek(file2->file, 0, SEEK_END);
             file2->size = ftell(file2->file);
             file2->line = malloc(file2->size);
             fseek(file2->file, 0, SEEK_SET);  // Return to the top of the file
 
-            //printf("file1->path: %s\n", file1->path);
+            printf("file1->path: %s\n", file1->path);
             printf("file1->size: %d bytes\n", file1->size);
-            printf("-----------------------------------");
-            //printf("file2->path: %s\n", file2->path);
+            printf("file2->path: %s\n", file2->path);
             printf("file2->size: %d bytes\n", file2->size);
-            
+            printf("\n-----------------------------------\n");
             
             // Read the entire file1 and file2
             file1->read = fread(file1->line, file1->size, 1, file1->file);
             file2->read = fread(file2->line, file2->size, 1, file2->file);
 
-            printf("file1:\n\nRead: \n%s\n\n----------------------------", file1->line);
-            printf("file2:\n\nRead: \n%s\n\n----------------------------", file2->line);
+            printf("file1:\n\nRead: \n%s\n----------------------------", file1->line);
+            printf("file2:\n\nRead: \n%s\n----------------------------", file2->line);
             free(file1->line);
             free(file2->line);
 
