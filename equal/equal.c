@@ -203,7 +203,6 @@ main (int argc, char **argv)
         }
         exit(0);
 
-
         // Print file 1
         // ---------------------
         // Print file 2
