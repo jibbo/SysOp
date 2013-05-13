@@ -4,8 +4,6 @@
 #include <string.h>
 #include <unistd.h>
 
-using namespace std;
-
 /*
  % testopt
      aflag = 0, bflag = 0, cvalue = (null)
@@ -85,6 +83,7 @@ main (int argc, char **argv)
         printf ("Non-option argument %s\n", argv[index]);
 
     // Copy argv parameters into path1 and path2..
+    /*
     char* path1;
     path1 = (char*) malloc(sizeof(argv[1]));
     path1 = strcpy(path1, argv[1]);
@@ -92,17 +91,27 @@ main (int argc, char **argv)
     path2 = (char*) malloc(sizeof(argv[2]));
     path2 = strcpy(path2, argv[2]);
 
-    // File test for both filepath
-    char* test1 = (char*) malloc(sizeof("test -d ") + sizeof(argv[1]));
-    test1 = strcpy(test1, "test -d ");
-    strcat(test1, path1);
 
-    char* test2 = (char*) malloc(sizeof("test -d ") + sizeof(argv[2]));
-    test2 = strcpy(test2, "test -d ");
+    free(path1);
+    free(path2);
+
+    printf("\n\np1: %s\n", path1);
+    printf("\n\np2: %s\n", path2);
+*/
+
+    // File test for both filepath
+    /*
+    char* test1 = (char*) malloc(sizeof("test -d ") + sizeof(path1));
+    test1 = strcat(test1, "test -d ");
+    test1 = strcat(test1, path1);
+
+    char* test2 = (char*) malloc(sizeof("test -d ") + sizeof(path2));
+    test2 = strcat(test2, "test -d ");
     test2 = strcat(test2, path2);
 
     printf("\n\ntest1: %s\n", test1);
     printf("\n\ntest2: %s\n", test2);
+    */
 
 /*
     // Start with project
@@ -117,7 +126,6 @@ main (int argc, char **argv)
         // List all files directory 1
         // ---------------------
         // List all files directory 2
-
     }
 
     // Directory test for both filepath
@@ -127,27 +135,40 @@ main (int argc, char **argv)
     test2 = (char*) malloc(sizeof("test -d ") + sizeof(argv[2]));
     test2 = strcpy(test2, "test -d ");
     test2 = strcat(test2, path2);
+*/
 
-    comparable = !system(test1) && !system(test2);
+    int comparable = 1;
+    //comparable = !system(test1) && !system(test2);
     if(comparable) {
         printf("Both paths are files!\n");
 
         FILE *file1;    // First file
         FILE *file2;    // Second file
 
-        if ((file1 = fopen(path1,"r")) == NULL)  {
+        if ((file1 = fopen(argv[1],"r")) == NULL)  {
             // Impossibile aprire path1
-            perror(path1);
-            exit(1);
+            perror(argv[1]);
+            exit(EXIT_FAILURE);
         }
-        else if ((file2 = fopen(path2,"r")) == NULL)  {
+        else if ((file2 = fopen(argv[2],"r")) == NULL)  {
             // Impossibile aprire path1
-            perror(path2);
-            exit(1);
+            perror(argv[2]);
+            exit(EXIT_FAILURE);
         }
         else {
-            fclose(file1);
-            fclose(file2);
+                char * line = NULL;
+                size_t len = 0;
+                ssize_t read;
+
+                while ((read = getline(&line, &len, file1)) != -1) {
+                   printf("Retrieved line of length %zu :\n", read);
+                   printf("%s", line);
+                }
+
+                if (line) { free(line); }
+
+                fclose(file1);
+                fclose(file2);
         }
         exit(0);
 
@@ -160,6 +181,6 @@ main (int argc, char **argv)
     else {
         printf("You cannot compare two different kind of file!\n");
     }
-*/
+
     return 0;
 }
