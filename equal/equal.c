@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <dirent.h>
 
 
 struct str_file {
@@ -141,8 +142,28 @@ main (int argc, char **argv)
     test2 = strcat(test2, path2);
 */
 
-    int comparable = 1;
-    //comparable = !system(test1) && !system(test2);
+/*
+    int len;
+    struct dirent *pDirent;
+    DIR *pDir;
+
+    if (c < 2) {
+        printf ("Usage: testprog <dirname>\n");
+        return 1;
+    }
+    pDir = opendir (v[1]);
+    if (pDir == NULL) {
+        printf ("Cannot open directory '%s'\n", v[1]);
+        return 1;
+    }
+
+    while ((pDirent = readdir(pDir)) != NULL) {
+        printf ("[%s]\n", pDirent->d_name);
+    }
+    closedir (pDir);
+    */
+
+
     if(comparable) {
         printf("Both paths are files!\n");
 
@@ -202,11 +223,6 @@ main (int argc, char **argv)
             fclose(file2->file);
         }
         exit(0);
-
-        // Print file 1
-        // ---------------------
-        // Print file 2
-
     }
     else {
         printf("You cannot compare two different kind of file!\n");
