@@ -151,8 +151,8 @@ main (int argc, char **argv)
     file2->path = (char*) malloc(sizeof(argv[2]));
     file2->path = strcpy(file2->path, argv[2]);
 
-    stat stbuf1;
-    stat stbuf2;
+    struct stat stbuf1;
+    struct stat stbuf2;
 
     int access_err1 = (stat(file1->path, &stbuf1) == -1);
     int access_err2 = (stat(file2->path, &stbuf2) == -1);
@@ -252,7 +252,7 @@ void dirwalk(char * path)
     // La funzione readdir legge la voce corrente nella directory, posizionandosi sulla voce successiva.
     // Restituisce un puntatore al directory stream in caso di successo e NULL in caso di errore.
     // Loop on directory entries
-    while ((direntry = readdir(path)) != NULL) {
+    while ((direntry = readdir(dir)) != NULL) {
         if (strcmp(direntry->d_name, ".") == 0 || strcmp(direntry->d_name, ".."))
             continue;    /* skip self and parent */
         if (strlen(path)+strlen(direntry->d_name)+2 > sizeof(path))
@@ -261,7 +261,7 @@ void dirwalk(char * path)
 
             struct stat data;
             stat ( direntry->d_name, & data ); /* get stat data */
-            printf ( " File : % s \ t size : % d \ n " , direntry - > d_name , data . st_size );
+            sprintf ("File : %s\t size : %d\n " , direntry->d_name, data.st_size );
 
             //printf("%s/%s", path, direntry->d_name);
             dirwalk(direntry->d_name);
