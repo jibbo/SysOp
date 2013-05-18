@@ -4,15 +4,11 @@
 #include <string.h>
 #include <unistd.h>
 
-
+#include <sys/dir.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
 // header -----------------------------------------
-
-
-#define NAME_MAX 14   /* longest filename component; */
-                      /* system-dependent */
 
 #define MAX_PATH 1024
 
@@ -20,16 +16,8 @@ typedef struct {              /* portable directory entry */
    long ino;                  /* inode number */
    char name[NAME_MAX+1];     /* name + '\0' terminator */
 } Dirent;
-
-typedef struct {              /* minimal DIR: no buffering, etc. */
-   int fd;                    /* file descriptor for the directory */
-   Dirent d;                  /* the directory entry */
-} DIR;
-
-DIR *opendir(char *dirname);
-Dirent *readdir(DIR *dfd);
-void closedir(DIR *dfd);
-void dirwalk(char *dir);
+ 
+void dirwalk(char *);
 
 // ------------------------------------------------
 
@@ -156,16 +144,15 @@ main (int argc, char **argv)
     int is_dir_2 = ((stbuf2.st_mode & S_IFMT) == S_IFDIR);
 
 
-    if(is_dir_1 ^ is_dir_2) {
+    if(is_dir_1 && is_dir_2) {
 
-        // Same types (both paths are files or directories) ..
-        if(is_dir_1 && is_dir_2) {
-            // Directories case..
-            dirwalk(file1->path);
-            dirwalk(file2->path);
-        }
-        else {
-            // Files case..
+        // Directories case..
+        dirwalk(file1->path);
+        dirwalk(file2->path);
+    }
+    else if(!is_dir_1 && !is_dir_2) {
+
+       // Files case..
             printf("Both paths are files!\n");
 
             if ((file1->file = fopen(file1->path,"rb")) == NULL)  {
@@ -211,54 +198,32 @@ main (int argc, char **argv)
                 fclose(file2->file);
             }
             exit(0);
-
-        }
     }
     else {
         printf("You cannot compare two different kind of file (one directory one file)!\n");
     }
-
-/*
-    int len;
-    struct dirent *pDirent;
-    DIR *pDir;
-
-    if (c < 2) {
-        printf ("Usage: testprog <dirname>\n");
-        return 1;
-    }
-    pDir = opendir (v[1]);
-    if (pDir == NULL) {
-        printf ("Cannot open directory '%s'\n", v[1]);
-        return 1;
-    }
-
-    while ((pDirent = readdir(pDir)) != NULL) {
-        printf ("[%s]\n", pDirent->d_name);
-    }
-    closedir (pDir);
-    */
-
     return 0;
 }
 
-void dirwalk(char *dir)
+void dirwalk(char * dir)
 {
     char name[MAX_PATH];
-    Dirent *dp;
+    Dirent* dp;
     DIR *dfd;
 
-    if ((dfd = opendir(dir)) == NULL) {
-        fprintf(stderr, "dirwalk: can't open %s\n", dir);
+    printf("tento di aprire %s\n", dir);
+
+    if ((dfd = opendir(dir)) == NULL) { 
+        printf("dirwalk: can't open %s\n", dir);
         return;
     }
     while ((dp = readdir(dfd)) != NULL) {
         if (strcmp(dp->name, ".") == 0 || strcmp(dp->name, ".."))
             continue;    /* skip self and parent */
         if (strlen(dir)+strlen(dp->name)+2 > sizeof(name))
-            fprintf(stderr, "dirwalk: name %s %s too long\n", dir, dp->name);
+            printf("dirwalk: name %s %s too long\n", dir, dp->name);
         else {
-            sprintf(name, "%s/%s", dir, dp->name);
+            printf("%s/%s", dir, dp->name);
             dirwalk(dp->name);
         }
     }
