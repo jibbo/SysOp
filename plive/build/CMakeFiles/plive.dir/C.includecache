@@ -9,10 +9,14 @@
 /home/jibbo/projects/plive/main.c
 stdio.h
 -
+stdint.h
+-
 ctype.h
 -
 stdlib.h
 -
 unistd.h
+-
+dirent.h
 -
 
