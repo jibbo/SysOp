@@ -15,7 +15,7 @@
 
 // ------------------------------------------------
 
-typedef struct{
+typedef struct {
     char * path;
     FILE * file;
     char * line;
@@ -25,12 +25,10 @@ typedef struct{
 
 FILE* log_file;
 
-void dirwalk(char *);
+void dirwalk(char *, int);
 void diffBetweenFiles(str_file * file1,  str_file * file2);
 
 /*
-
-
     #include <sys/types.h>
     #include <dirent.h>
     DIR * opendir(const char *dirname)
@@ -56,45 +54,6 @@ void diffBetweenFiles(str_file * file1,  str_file * file2);
         char d_name [256];
     };
 */
-
-
-
-/*
- % testopt
-     aflag = 0, bflag = 0, cvalue = (null)
-     
-     % testopt -a -b
-     aflag = 1, bflag = 1, cvalue = (null)
-     
-     % testopt -ab
-     aflag = 1, bflag = 1, cvalue = (null)
-     
-     % testopt -c foo
-     aflag = 0, bflag = 0, cvalue = foo
-     
-     % testopt -cfoo
-     aflag = 0, bflag = 0, cvalue = foo
-     
-     % testopt arg1
-     aflag = 0, bflag = 0, cvalue = (null)
-     Non-option argument arg1
-     
-     % testopt -a arg1
-     aflag = 1, bflag = 0, cvalue = (null)
-     Non-option argument arg1
-     
-     % testopt -c foo arg1
-     aflag = 0, bflag = 0, cvalue = foo
-     Non-option argument arg1
-     
-     % testopt -a -- -b
-     aflag = 1, bflag = 0, cvalue = (null)
-     Non-option argument -b
-     
-     % testopt -a -
-     aflag = 1, bflag = 0, cvalue = (null)
-     Non-option argument -
-     */
 
 main (int argc, char **argv)
 {
@@ -146,17 +105,20 @@ main (int argc, char **argv)
     file2 = (str_file *) malloc(sizeof(str_file));
 
     // Copy argv parameters into path1 and path2..
-    file1->path = (char*) malloc(sizeof(argv[1]));
-    file1->path = strcpy(file1->path, argv[1]);
-    file2->path = (char*) malloc(sizeof(argv[2]));
-    file2->path = strcpy(file2->path, argv[2]);
+    file1->path = (char*)malloc(sizeof(char) * strlen(argv[1]));
+    strcpy(file1->path, argv[1]);
+    file2->path = (char*)malloc(sizeof(char) * strlen(argv[2]));
+    strcpy(file2->path, argv[2]);
+
+    printf("PATH1:  %s\n", file1->path);
+    printf("PATH2:  %s\n", file2->path);
+    printf("\n\n");
 
     struct stat stbuf1;
     struct stat stbuf2;
 
     int access_err1 = (stat(file1->path, &stbuf1) == -1);
     int access_err2 = (stat(file2->path, &stbuf2) == -1);
-
     if ( access_err1 ) {
         fprintf(stderr, "Error: can't access %s\n", file1->path);
         return;
@@ -172,15 +134,20 @@ main (int argc, char **argv)
     if(is_dir_1 && is_dir_2) {
 
         // Directories case..
-        dirwalk(file1->path);
-        dirwalk(file2->path);
+        int indent = 1;
+        printf ("%s/\n", file1->path );
+        dirwalk(file1->path, indent);
+        //dirwalk(file2->path);
     }
     else if(!is_dir_1 && !is_dir_2) {
-        diffBetweenFiles(file1, file2);        
+        diffBetweenFiles(file1, file2);
     }
     else {
         printf("You cannot compare two different kind of files (one directory one file)!\n");
     }
+
+    free(file1);
+    free(file2);
     return 0;
 }
 
@@ -233,13 +200,16 @@ void diffBetweenFiles(str_file * file1, str_file * file2) {
     exit(0);
 }
 
-void dirwalk(char * path)
+void dirwalk(char * path, int indent)
 {
     char name[MAX_PATH];
     struct dirent* direntry;
     DIR* dir;   // file descriptor usato per la gestione del directory stream
+    struct stat stbuf;
+    int is_dir;
+    int access_err;
 
-    printf("tento di aprire %s\n", path);
+    //printf("tento di aprire %s\n", path);
 
     // La funzione opendir apre un directory stream.
     // Restituisce un puntatore ad un oggetto di tipo DIR in caso di successo e NULL in caso di errore.
@@ -253,22 +223,34 @@ void dirwalk(char * path)
     // Restituisce un puntatore al directory stream in caso di successo e NULL in caso di errore.
     // Loop on directory entries
     while ((direntry = readdir(dir)) != NULL) {
-        if (strcmp(direntry->d_name, ".") == 0 || strcmp(direntry->d_name, ".."))
+
+        if (strcmp(direntry->d_name, ".") == 0 || strcmp(direntry->d_name, "..") == 0)
             continue;    /* skip self and parent */
-        if (strlen(path)+strlen(direntry->d_name)+2 > sizeof(path))
-            printf("dirwalk: name %s %s too long\n", path, direntry->d_name);
-        else {
 
-            struct stat data;
-            stat ( direntry->d_name, & data ); /* get stat data */
-            sprintf ("File : %s\t size : %d\n " , direntry->d_name, data.st_size );
+        size_t length = strlen(path) + strlen(direntry->d_name) + 2;
+        char * concat = malloc(sizeof(char) * length);
+        snprintf(concat, length, "%s/%s", path, direntry->d_name);
+        stat(concat, &stbuf);
 
-            //printf("%s/%s", path, direntry->d_name);
-            dirwalk(direntry->d_name);
+        // indentation
+        int i = 0;
+        while(i < indent) {
+            printf("  ");
+            i++;
         }
+
+        is_dir = ((stbuf.st_mode & S_IFMT) == S_IFDIR);
+        if (is_dir) {
+            printf ("%s/\n" , direntry->d_name );
+            dirwalk(concat, indent + 1);
+        } else {
+            printf ("%s\n" , direntry->d_name);
+        }
+        free(concat);
     }
 
     // Chiude il directory stream.
     // La funzione restituisce 0 in caso di successo e -1 altrimenti, 
     closedir(dir);
+    return;
 }
