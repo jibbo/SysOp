@@ -4,13 +4,87 @@
 #include <string.h>
 #include <unistd.h>
 
+/*
+#include "lib_equal.h"
+#include "struct_stack.h"
+*/
+
+
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+#ifndef STRUCT_STACK_H
+
+#define STRUCT_STACK_H
+#define DIM 1000
+
+enum boolean { TRUE, FALSE };
+
+typedef struct {
+  int indice;
+  int* elem;
+} stack;
+
+void init(stack * );
+int emptyp (const stack *);
+int fullp (const stack *);
+int push (int, stack *);
+int top (int *, const stack *);
+int pop (stack *);
+
+#endif
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+//#include "struct_stack.h"
+
+int emptyp (const stack * s) {
+  return (s->indice==0);
+}
+
+int fullp (const stack * s) {
+  return (s->indice==DIM);
+}
+
+void init (stack * s) {
+  s->indice = 0;
+}
+
+int top (int * n, const stack * s) {
+    if (!emptyp(s)) {
+        *n = s->elem[s->indice-1];
+        return 1;
+    }
+    return -1;
+}
+
+int push (int n, stack * s) {
+  if (!fullp(s)) {
+    s->elem[s->indice++]=n;
+    return 1;
+  }
+  return -1;
+}
+    
+int pop (stack * s) {
+  if (!emptyp(s)) {
+    s->indice--;
+    return 1;
+  }
+  return -1;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+#ifndef EQUAL_H
+
+#define EQUAL_H
+#define LOG_PATH  "/var/log/utility/equal.log"
+
 #include <sys/dir.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <dirent.h>
-#include <sys/syslog.h>
-
-// header -----------------------------------------
+#include <syslog.h>
 
 typedef struct {
     char * path;
@@ -23,135 +97,14 @@ typedef struct {
 FILE* log_file;
 
 void dirwalk(char *, int);
-void diffBetweenFiles(str_file * file1,  str_file * file2);
+void diffBetweenFiles(str_file *,  str_file *);
 
-#define LOG_PATH  "/var/log/utility/equal.log"
+#endif
 
-// ------------------------------------------------
+// ---------------------------------------------------------------------------------------------------------------------------------
 
 
-/*
-    #include <sys/types.h>
-    #include <dirent.h>
-    DIR * opendir(const char *dirname)
-    Apre un directory stream.
-    La funzione restituisce un puntatore al directory stream in caso di successo e NULL per un errore,
-    nel qual caso errno assumer`
-    a i valori EACCES, EMFILE, ENFILE, ENOENT, ENOMEM e ENOTDIR.
-
-    #include <sys/types.h>
-    #include <dirent.h>
-    struct dirent *readdir(DIR *dir)
-    Legge una voce dal directory stream.
-    La funzione restituisce il puntatore alla struttura contenente i dati in caso di successo e NULL
-    altrimenti, in caso di directory stream non valido errno assumer`
-    a il valore EBADF, il valore NULL
-    viene restituito anche quando si raggiunge la fine dello stream.
-
-    struct dirent {
-        ino_t d_ino ;
-        off_t d_off ;
-        unsigned short int d_reclen ;
-        unsigned char d_type ;
-        char d_name [256];
-    };
-*/
-
-main (int argc, char **argv)
-{
-    int aflag = 0;
-    int bflag = 0;
-    char *cvalue = NULL;
-    int index;
-    int c;
-
-    opterr = 0;
-
-    while ((c = getopt (argc, argv, "abc:")) != -1)
-    {
-        switch (c)
-        {
-            case 'a':
-                aflag = 1;
-                break;
-            case 'b':
-                bflag = 1;
-                break;
-            case 'c':
-                cvalue = optarg;
-                break;
-            case '?':
-                if (optopt == 'c')
-                    fprintf (stderr, "Option -%c requires an argument.\n", optopt);
-                else if (isprint (optopt))
-                    fprintf (stderr, "Unknown option `-%c'.\n", optopt);
-                else
-                    fprintf (stderr,"Unknown option character `\\x%x'.\n", optopt);
-                return 1;
-            default:
-                abort ();
-        }
-    }
-
-    printf ("aflag = %d, bflag = %d, cvalue = %s\n", aflag, bflag, cvalue);
-
-    for (index = optind; index < argc; index++)
-        printf ("Non-option argument %s\n", argv[index]);
-
-    // Start with project
-    // .....................................................................................
-
-    str_file * file1;
-    str_file * file2;
-    file1 = (str_file *) malloc(sizeof(str_file));
-    file2 = (str_file *) malloc(sizeof(str_file));
-
-    // Copy argv parameters into path1 and path2..
-    file1->path = (char*)malloc(sizeof(char) * strlen(argv[1]));
-    strcpy(file1->path, argv[1]);
-    file2->path = (char*)malloc(sizeof(char) * strlen(argv[2]));
-    strcpy(file2->path, argv[2]);
-
-    printf("PATH1:  %s\n", file1->path);
-    printf("PATH2:  %s\n", file2->path);
-    printf("\n\n");
-
-    struct stat stbuf1;
-    struct stat stbuf2;
-
-    int access_err1 = (stat(file1->path, &stbuf1) == -1);
-    int access_err2 = (stat(file2->path, &stbuf2) == -1);
-    if ( access_err1 ) {
-        fprintf(stderr, "Error: can't access %s\n", file1->path);
-        return;
-    }
-    if ( access_err2) {
-        fprintf(stderr, "Error: can't access %s\n", file2->path);
-        return;
-    }
-
-    int is_dir_1 = ((stbuf1.st_mode & S_IFMT) == S_IFDIR);
-    int is_dir_2 = ((stbuf2.st_mode & S_IFMT) == S_IFDIR);
-
-    if(is_dir_1 && is_dir_2) {
-
-        // Directories case..
-        int indent = 1;
-        printf ("%s/\n", file1->path );
-        dirwalk(file1->path, indent);
-        //dirwalk(file2->path);
-    }
-    else if(!is_dir_1 && !is_dir_2) {
-        diffBetweenFiles(file1, file2);
-    }
-    else {
-        printf("You cannot compare two different kind of files (one directory one file)!\n");
-    }
-
-    free(file1);
-    free(file2);
-    return 0;
-}
+#include "lib_equal.h"
 
 void diffBetweenFiles(str_file * file1, str_file * file2) {
     // Files case..
@@ -253,4 +206,131 @@ void dirwalk(char * path, int indent)
     // La funzione restituisce 0 in caso di successo e -1 altrimenti, 
     closedir(dir);
     return;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+/*
+    #include <sys/types.h>
+    #include <dirent.h>
+    DIR * opendir(const char *dirname)
+    Apre un directory stream.
+    La funzione restituisce un puntatore al directory stream in caso di successo e NULL per un errore,
+    nel qual caso errno assumer`
+    a i valori EACCES, EMFILE, ENFILE, ENOENT, ENOMEM e ENOTDIR.
+
+    #include <sys/types.h>
+    #include <dirent.h>
+    struct dirent *readdir(DIR *dir)
+    Legge una voce dal directory stream.
+    La funzione restituisce il puntatore alla struttura contenente i dati in caso di successo e NULL
+    altrimenti, in caso di directory stream non valido errno assumer`
+    a il valore EBADF, il valore NULL
+    viene restituito anche quando si raggiunge la fine dello stream.
+
+    struct dirent {
+        ino_t d_ino ;
+        off_t d_off ;
+        unsigned short int d_reclen ;
+        unsigned char d_type ;
+        char d_name [256];
+    };
+*/
+
+int main (int argc, char **argv)
+{
+    int aflag = 0;
+    int bflag = 0;
+    char *cvalue = NULL;
+    int index;
+    int c;
+
+    opterr = 0;
+
+    while ((c = getopt (argc, argv, "abc:")) != -1)
+    {
+        switch (c)
+        {
+            case 'a':
+                aflag = 1;
+                break;
+            case 'b':
+                bflag = 1;
+                break;
+            case 'c':
+                cvalue = optarg;
+                break;
+            case '?':
+                if (optopt == 'c')
+                    fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+                else if (isprint (optopt))
+                    fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+                else
+                    fprintf (stderr,"Unknown option character `\\x%x'.\n", optopt);
+                return 1;
+            default:
+                abort ();
+        }
+    }
+
+    printf ("aflag = %d, bflag = %d, cvalue = %s\n", aflag, bflag, cvalue);
+
+    for (index = optind; index < argc; index++)
+        printf ("Non-option argument %s\n", argv[index]);
+
+    // Start with project
+    // .....................................................................................
+
+    str_file * file1;
+    str_file * file2;
+    file1 = (str_file *) malloc(sizeof(str_file));
+    file2 = (str_file *) malloc(sizeof(str_file));
+
+    // Copy argv parameters into path1 and path2..
+    file1->path = (char*)malloc(sizeof(char) * strlen(argv[1]));
+    strcpy(file1->path, argv[1]);
+    file2->path = (char*)malloc(sizeof(char) * strlen(argv[2]));
+    strcpy(file2->path, argv[2]);
+
+    printf("PATH1:  %s\n", file1->path);
+    printf("PATH2:  %s\n", file2->path);
+    printf("\n\n");
+
+    struct stat stbuf1;
+    struct stat stbuf2;
+
+    int access_err1 = (stat(file1->path, &stbuf1) == -1);
+    int access_err2 = (stat(file2->path, &stbuf2) == -1);
+    if ( access_err1 ) {
+        fprintf(stderr, "Error: can't access %s\n", file1->path);
+        return;
+    }
+    if ( access_err2) {
+        fprintf(stderr, "Error: can't access %s\n", file2->path);
+        return;
+    }
+
+    int is_dir_1 = ((stbuf1.st_mode & S_IFMT) == S_IFDIR);
+    int is_dir_2 = ((stbuf2.st_mode & S_IFMT) == S_IFDIR);
+
+    if(is_dir_1 && is_dir_2) {
+
+        // Directories case..
+        int indent = 1;
+        printf ("%s/\n", file1->path );
+        dirwalk(file1->path, indent);
+        printf("\n--------------------------------------------------------------------------------------------------\n");
+        printf ("%s/\n", file2->path );
+        dirwalk(file2->path, indent);
+    }
+    else if(!is_dir_1 && !is_dir_2) {
+        diffBetweenFiles(file1, file2);
+    }
+    else {
+        printf("You cannot compare two different kind of files (one directory one file)!\n");
+    }
+
+    free(file1);
+    free(file2);
+    return 0;
 }
