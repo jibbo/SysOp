@@ -8,12 +8,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <dirent.h>
+#include <sys/syslog.h>
 
 // header -----------------------------------------
-
-#define MAX_PATH 1024
-
-// ------------------------------------------------
 
 typedef struct {
     char * path;
@@ -27,6 +24,11 @@ FILE* log_file;
 
 void dirwalk(char *, int);
 void diffBetweenFiles(str_file * file1,  str_file * file2);
+
+#define LOG_PATH  "/var/log/utility/equal.log"
+
+// ------------------------------------------------
+
 
 /*
     #include <sys/types.h>
@@ -202,7 +204,6 @@ void diffBetweenFiles(str_file * file1, str_file * file2) {
 
 void dirwalk(char * path, int indent)
 {
-    char name[MAX_PATH];
     struct dirent* direntry;
     DIR* dir;   // file descriptor usato per la gestione del directory stream
     struct stat stbuf;
@@ -234,9 +235,8 @@ void dirwalk(char * path, int indent)
 
         // indentation
         int i = 0;
-        while(i < indent) {
+        while(i++ < indent) { 
             printf("  ");
-            i++;
         }
 
         is_dir = ((stbuf.st_mode & S_IFMT) == S_IFDIR);
