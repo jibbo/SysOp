@@ -9,11 +9,14 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-void scanworkingdir(char *, int);
+void scanworkingdir(char*, int);
+void createarchive(char* filename);
+void printhelp();
 
 int main(int argc, char **argv) {
-  int aflag = 0;
-  int bflag = 0;
+  int c_flag = 0;
+  int x_flag = 0;
+  int t_flag = 0;
 
   char *dirvalue = NULL;
   int index;
@@ -30,29 +33,31 @@ int main(int argc, char **argv) {
         scanworkingdir(dirvalue, 2);
         break;
 
-      // In questo caso l'utility deve estrarre l'archivio
+      // In questo caso l'utility deve creare l'archivio
       case 'c':
-        bflag = 1;
+        c_flag = 1;
         break;
 
       // In questo caso l'utility deve estrarre l'archivio nella directory corrente
       case 'x':
-        bflag = 1;
+        x_flag = 1;
         break;
 
       // In questo caso l'utility deve visualizzare un elenco del contenuto dell'archivio
       case 't':
-        aflag = 1;
+        t_flag = 1;
         break;
 
       // 
       case '?':
-        if (optopt == 'f')
+        if (optopt == 'f') {
           fprintf (stderr, "Option -%c requires an argument.\n", optopt);
-        else if (isprint (optopt))
-          fprintf (stderr, "Unknown option `-%c'.\n", optopt);
-        else
+        } else if (isprint (optopt)) {
+          fprintf (stderr, "Unknown option `-%c'\n", optopt);
+          printhelp();
+        } else {
           fprintf (stderr, "Unknown option character `\\x%x'.\n", optopt);
+        }
         return 1;
 
       default:
@@ -60,7 +65,7 @@ int main(int argc, char **argv) {
     }
   }
 
-  // printf ("\naflag = %d, bflag = %d, dirvalue = %s\n", aflag, bflag, dirvalue);
+  printf ("\nc = %d, x = %d, t = %d, dirvalue = %s\n",  c_flag, x_flag, t_flag, dirvalue);
 
   for (index = optind; index < argc; index++)
    printf ("Non-option argument %s\n", argv[index]);
@@ -68,7 +73,19 @@ int main(int argc, char **argv) {
   return 0;
 }
 
-void scanworkingdir(char * path, int indent) {
+void printhelp() {
+  printf("Usage: \n");
+  printf("\t -f to create or extract an archive");
+  printf("\n\t -c to create a new archive");
+  printf("\n\t -x to extract an archive in the current directory");
+  printf("\n\t -t to displat the content of an archive\n");
+}
+
+void createarchive(char* filename) {
+
+}
+
+void scanworkingdir(char* path, int indent) {
   struct dirent* direntry;
   DIR* dir;   // file descriptor usato per la gestione del directory stream
   struct stat stbuf;
