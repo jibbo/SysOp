@@ -93,11 +93,8 @@ typedef struct {
     ssize_t read;
 } str_file;
 
-FILE* log_file;
-
 void dirwalk(char *, char *, int, char);
 void diffBetweenFiles(str_file *, str_file *);
-void getCompletePath(char *, char *, char *);
 
 #endif
 
@@ -105,24 +102,6 @@ void getCompletePath(char *, char *, char *);
 
 
 #include "lib_equal.h"
-
-void getCompletePath(char * completePath, char * path, char * filename) {
-
-    //size_t length = strlen(path) + strlen(filename) + 2;
-
-    printf("path prima: %s\n",completePath);
-    completePath = strcpy(completePath, path);
-    completePath = strcat(path, "/");
-    completePath = strcat(completePath, filename);
-    printf("path dopo: %s\n",completePath);
-    //char * tmp;
-    //tmp = (char *) malloc(sizeof(char) * length);
-    /*
-    snprintf(tmp, strlen(path) + 1, "%s", path);
-    snprintf(path, length, "%s/%s", tmp, filename);
-    free(tmp);
-    */
-}
 
 void diffBetweenFiles(str_file * file1, str_file * file2) {
     // Files case..
@@ -199,11 +178,6 @@ void dirwalk(char * path1, char * path2, int indent, char symb)
         syslog(LOG_INFO, "Cannot open %s.\nTerminated.\n", path1);
         exit(EXIT_FAILURE);
     }
-    if ((dir2 = opendir(path2)) == NULL) { 
-        printf("Cannot open %s\n", path2);
-        syslog(LOG_INFO, "Cannot open %s.\nTerminated.\n", path2);
-        exit(EXIT_FAILURE);
-    }
 
     // Cicla tutti i files e directory presenti all'interno del path specificato.
     // La funzione readdir legge la voce corrente nella directory, posizionandosi sulla voce successiva.
@@ -218,11 +192,19 @@ void dirwalk(char * path1, char * path2, int indent, char symb)
             char * completePath1 = (char *) malloc(sizeof(char) * length1);
             snprintf(completePath1, length1, "%s/%s", path1, dirent1->d_name);
 
+            //printf("analizzando %s\n\n", dirent1->d_name);
+
             found = 0;
 
             // Valuto se si tratta di una sub-directory..
             stat(completePath1, &stat1);
             is_dir1 = ((stat1.st_mode & S_IFMT) == S_IFDIR);
+
+            if ((dir2 = opendir(path2)) == NULL) { 
+                printf("Cannot open %s\n", path2);
+                syslog(LOG_INFO, "Cannot open %s.\nTerminated.\n", path2);
+                exit(EXIT_FAILURE);
+            }
 
             // Scorro tutta la seconda directory e controllo se il file è presente
             while ((dirent2 = readdir(dir2)) != NULL) {
@@ -231,33 +213,42 @@ void dirwalk(char * path1, char * path2, int indent, char symb)
                 if (strcmp(dirent2->d_name, ".") != 0 && strcmp(dirent2->d_name, "..") != 0) {
 
                     // Se i files o le directories hanno lo stesso nome..
+
+                    //printf("dirent1 = %s , dirent2 = %s\n", dirent1->d_name, dirent2->d_name);
+
                     if(strcmp(dirent1->d_name, dirent2->d_name) == 0) {
 
                         // Setto il flag di found a 1 così riconosco che due files o directories hanno lo stesso nome..
                         found = 1;
 
-                        // Concateno il nome del file/directory al path originario per lavorare ricorsivamente sul path completo..
-                        // Serve per tenere traccia del path completo dove si trova il file o la directory che si sta analizzando.
-                        size_t length2 = strlen(path2) + strlen(dirent2->d_name) + 2;
-                        char * completePath2 = (char *) malloc(sizeof(char) * length2);
-                        snprintf(completePath2, length2, "%s/%s", path2, dirent2->d_name);
+                        // Sto visualizzando il file per la prima volta..
+                        if(symb == '+') {
 
-                        stat(completePath2, &stat2);
-                        is_dir2 = ((stat2.st_mode & S_IFMT) == S_IFDIR);
+                            // Concateno il nome del file/directory al path originario per lavorare ricorsivamente sul path completo..
+                            // Serve per tenere traccia del path completo dove si trova il file o la directory che si sta analizzando.
+                            size_t length2 = strlen(path2) + strlen(dirent2->d_name) + 2;
+                            char * completePath2 = (char *) malloc(sizeof(char) * length2);
+                            snprintf(completePath2, length2, "%s/%s", path2, dirent2->d_name);
 
-                        printf("Differences in %s\n", dirent1->d_name);
-                        printf("------------------------------\n");
+                            stat(completePath2, &stat2);
+                            is_dir2 = ((stat2.st_mode & S_IFMT) == S_IFDIR);
 
-                        if (is_dir1 && is_dir2) {
-                            dirwalk(completePath1, completePath2, indent + 1, '+');
-                            dirwalk(completePath2, completePath1, indent + 1, '-');
-                        } else {
-                            //diffBetweenFiles(path1, path2);
-                            //diffBetweenFiles(path2, path1);
+                            printf("Differences in %s\n", dirent1->d_name);
+                            printf("------------------------------\n");
+
+                            if (is_dir1 && is_dir2) {
+                                //printf("\n");
+
+                                dirwalk(completePath1, completePath2, indent + 1, '+');
+                                dirwalk(completePath2, completePath1, indent + 1, '-');
+                            } else {
+                                //diffBetweenFiles(path1, path2);
+                                //diffBetweenFiles(path2, path1);
+                            }
+
+                            printf("------------------------------\n");
+                            free(completePath2);
                         }
-
-                        printf("------------------------------\n");
-                        free(completePath2);
                     }
                 }
             }
@@ -269,13 +260,13 @@ void dirwalk(char * path1, char * path2, int indent, char symb)
             }
 
             free(completePath1);
+            closedir(dir2);
         }
     }
 
     // Chiude il directory stream.
     // La funzione restituisce 0 in caso di successo e -1 altrimenti, 
     closedir(dir1);
-    closedir(dir2);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
