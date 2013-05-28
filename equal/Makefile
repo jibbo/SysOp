@@ -7,7 +7,7 @@
 # FILE		= hello
 # OBJ           = hello.o
 
-equal : equal.o lib_equal.o struct_stack.o
+equal : equal.o lib_equal.o struct_stack.o.
 	gcc equal.o lib_equal.o struct_stack.o
 
 lib_equal.o : lib_equal.c.

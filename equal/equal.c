@@ -125,34 +125,40 @@ void diffBetweenFiles(str_file * file1, str_file * file2) {
         // Obtain file1 dimension in bytes
         fseek(file1->file, 0, SEEK_END);
         file1->size = ftell(file1->file);
-        file1->line = malloc(file1->size);
+        file1->line = (char *) malloc(file1->size);
         fseek(file1->file, 0, SEEK_SET);  // Return to the top of the file
 
         // Obtain file2 dimension in bytes
         fseek(file2->file, 0, SEEK_END);
         file2->size = ftell(file2->file);
-        file2->line = malloc(file2->size);
+        file2->line = (char *) malloc(file2->size);
         fseek(file2->file, 0, SEEK_SET);  // Return to the top of the file
 
         printf("file1->path: %s\n", file1->path);
         printf("file1->size: %d bytes\n", file1->size);
         printf("file2->path: %s\n", file2->path);
         printf("file2->size: %d bytes\n", file2->size);
-        printf("\n-----------------------------------\n");
+        printf("\n-----------------------------------");
         
         // Read the entire file1 and file2
         file1->read = fread(file1->line, file1->size, 1, file1->file);
         file2->read = fread(file2->line, file2->size, 1, file2->file);
 
-        printf("file1:\n\nRead: \n%s\n----------------------------", file1->line);
-        printf("file2:\n\nRead: \n%s\n----------------------------", file2->line);
+        printf("\nfile1:\n%s\n----------------------------", file1->line);
+        printf("\nfile2:\n%s\n----------------------------", file2->line);
+
+        printf("\n\n");
+        if(strcmp(file1->line , file2->line)) {
+            printf("I files sono diversi!\n");
+        } else {
+            printf("I files sono uguali!\n");
+        }
+
         free(file1->line);
         free(file2->line);
-
         fclose(file1->file);
         fclose(file2->file);
     }
-    exit(0);
 }
 
 void dirwalk(char * path, int indent)
@@ -182,7 +188,7 @@ void dirwalk(char * path, int indent)
             continue;    /* skip self and parent */
 
         size_t length = strlen(path) + strlen(direntry->d_name) + 2;
-        char * concat = malloc(sizeof(char) * length);
+        char * concat = (char *) malloc(sizeof(char) * length);
         snprintf(concat, length, "%s/%s", path, direntry->d_name);
         stat(concat, &stbuf);
 
@@ -205,7 +211,6 @@ void dirwalk(char * path, int indent)
     // Chiude il directory stream.
     // La funzione restituisce 0 in caso di successo e -1 altrimenti, 
     closedir(dir);
-    return;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -237,46 +242,7 @@ void dirwalk(char * path, int indent)
     };
 */
 
-int main (int argc, char **argv)
-{
-    int aflag = 0;
-    int bflag = 0;
-    char *cvalue = NULL;
-    int index;
-    int c;
-
-    opterr = 0;
-
-    while ((c = getopt (argc, argv, "abc:")) != -1)
-    {
-        switch (c)
-        {
-            case 'a':
-                aflag = 1;
-                break;
-            case 'b':
-                bflag = 1;
-                break;
-            case 'c':
-                cvalue = optarg;
-                break;
-            case '?':
-                if (optopt == 'c')
-                    fprintf (stderr, "Option -%c requires an argument.\n", optopt);
-                else if (isprint (optopt))
-                    fprintf (stderr, "Unknown option `-%c'.\n", optopt);
-                else
-                    fprintf (stderr,"Unknown option character `\\x%x'.\n", optopt);
-                return 1;
-            default:
-                abort ();
-        }
-    }
-
-    printf ("aflag = %d, bflag = %d, cvalue = %s\n", aflag, bflag, cvalue);
-
-    for (index = optind; index < argc; index++)
-        printf ("Non-option argument %s\n", argv[index]);
+int main (int argc, char **argv) {
 
     // Start with project
     // .....................................................................................
@@ -303,15 +269,12 @@ int main (int argc, char **argv)
     int access_err2 = (stat(file2->path, &stbuf2) == -1);
     if ( access_err1 ) {
         fprintf(stderr, "Error: can't access %s\n", file1->path);
-        return;
+        exit(EXIT_FAILURE);
     }
     if ( access_err2) {
         fprintf(stderr, "Error: can't access %s\n", file2->path);
-        return;
+        exit(EXIT_FAILURE);
     }
-
-    int is_dir_1 = ((stbuf1.st_mode & S_IFMT) == S_IFDIR);
-    int is_dir_2 = ((stbuf2.st_mode & S_IFMT) == S_IFDIR);
 
     if(is_dir_1 && is_dir_2) {
 
@@ -332,5 +295,5 @@ int main (int argc, char **argv)
 
     free(file1);
     free(file2);
-    return 0;
+    exit(EXIT_SUCCESS);
 }
