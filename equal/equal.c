@@ -94,7 +94,9 @@ typedef struct {
 } str_file;
 
 void dirwalk(char *, char *, int, char);
-void diffBetweenFiles(str_file *, str_file *);
+void diffBetweenFiles(str_file *, str_file *, int);
+int are_equals(char *, char *);
+void printIndented(char *, int);
 
 #endif
 
@@ -103,7 +105,13 @@ void diffBetweenFiles(str_file *, str_file *);
 
 #include "lib_equal.h"
 
-void diffBetweenFiles(str_file * file1, str_file * file2) {
+void printIndented(char * str, int indent_limit) {
+    int indent_tab;
+    for(indent_tab = 0; indent_tab < indent_limit; indent_tab++) { printf("  "); }
+    printf("%s\n", str);
+}
+
+void diffBetweenFiles(str_file * file1, str_file * file2, int indent_limit) {
     // Files case..
     //printf("Both paths are files!\n");
 
@@ -117,8 +125,8 @@ void diffBetweenFiles(str_file * file1, str_file * file2) {
         perror(file2->path);
         exit(EXIT_FAILURE);
     }
-    else
-    {
+    else {
+
         // Obtain file1 dimension in bytes
         fseek(file1->file, 0, SEEK_END);
         file1->size = ftell(file1->file);
@@ -131,24 +139,27 @@ void diffBetweenFiles(str_file * file1, str_file * file2) {
         file2->line = (char *) malloc(file2->size);
         fseek(file2->file, 0, SEEK_SET);  // Return to the top of the file
 
+        /*
         printf("file1->path: %s\n", file1->path);
         printf("file1->size: %d bytes\n", file1->size);
         printf("file2->path: %s\n", file2->path);
         printf("file2->size: %d bytes\n", file2->size);
         printf("\n-----------------------------------");
+        */
         
         // Read the entire file1 and file2
         file1->read = fread(file1->line, file1->size, 1, file1->file);
         file2->read = fread(file2->line, file2->size, 1, file2->file);
 
+        /*
         printf("\nfile1:\n%s\n----------------------------", file1->line);
         printf("\nfile2:\n%s\n----------------------------", file2->line);
+        */
 
-        printf("\n\n");
         if(strcmp(file1->line , file2->line)) {
-            printf("I files sono diversi!\n");
+            printIndented("I files sono diversi!", indent_limit);
         } else {
-            printf("I files sono uguali!\n");
+            printIndented("I files sono uguali!", indent_limit);
         }
 
         free(file1->line);
@@ -158,15 +169,143 @@ void diffBetweenFiles(str_file * file1, str_file * file2) {
     }
 }
 
-void dirwalk(char * path1, char * path2, int indent, char symb)
+int are_equals_directories(char * path1, char * path2) {
+
+    struct dirent *dirent1, *dirent2;
+    DIR *dir1, *dir2;
+    struct stat stat1, stat2;
+    int is_dir1, is_dir2;
+
+    int equal_dir = 1;
+
+    if ((dir1 = opendir(path1)) == NULL) { 
+        printf("Cannot open %s\n", path1);
+        syslog(LOG_INFO, "Cannot open %s. Terminated.", path1);
+        exit(EXIT_FAILURE);
+    }
+
+    while ((dirent1 = readdir(dir1)) != NULL && equal_dir) {
+
+        if (strcmp(dirent1->d_name, ".") != 0 && strcmp(dirent1->d_name, "..") != 0) {
+
+            // Concateno il nome del file/directory al path originario per lavorare ricorsivamente sul path completo..
+            // Serve per tenere traccia del path completo dove si trova il file o la directory che si sta analizzando.
+            size_t length1 = strlen(path1) + strlen(dirent1->d_name) + 2;
+            char * completePath1 = (char *) malloc(sizeof(char) * length1);
+            snprintf(completePath1, length1, "%s/%s", path1, dirent1->d_name);
+
+            // Valuto se si tratta di una sub-directory..
+            stat(completePath1, &stat1);
+            is_dir1 = ((stat1.st_mode & S_IFMT) == S_IFDIR);
+
+            if ((dir2 = opendir(path2)) == NULL) { 
+                printf("Cannot open %s\n", path2);
+                syslog(LOG_INFO, "Cannot open %s. Terminated.", path2);
+                exit(EXIT_FAILURE);
+            }
+
+            // Scorro tutta la seconda directory e controllo se il file è presente
+            while ((dirent2 = readdir(dir2)) != NULL && equal_dir) {
+
+                // Verifico che non siano le entries di default delle directories..
+                if (strcmp(dirent2->d_name, ".") != 0 && strcmp(dirent2->d_name, "..") != 0) {
+
+                    // Se i files o le directories hanno lo stesso nome..
+                    if(strcmp(dirent1->d_name, dirent2->d_name) == 0) {
+
+                        // Concateno il nome del file/directory al path originario per lavorare ricorsivamente sul path completo..
+                        // Serve per tenere traccia del path completo dove si trova il file o la directory che si sta analizzando.
+                        size_t length2 = strlen(path2) + strlen(dirent2->d_name) + 2;
+                        char * completePath2 = (char *) malloc(sizeof(char) * length2);
+                        snprintf(completePath2, length2, "%s/%s", path2, dirent2->d_name);
+
+                        stat(completePath2, &stat2);
+                        is_dir2 = ((stat2.st_mode & S_IFMT) == S_IFDIR);
+
+                        if (is_dir1 && is_dir2) {
+
+                            // Procedo in maniera ricorsiva sulle sub-directory aventi lo stesso nome in entrambi i path..
+                            equal_dir = equal_dir && are_equals_directories(completePath1, completePath2);
+                        }
+                        free(completePath2);
+                    }
+                    else { equal_dir = 0; }
+                }
+            }
+
+            free(completePath1);
+            closedir(dir2);
+        }
+    }
+    closedir(dir1);
+    return equal_dir;
+}
+
+int are_equals(char * file_path1, char * file_path2) {
+
+    str_file * file1;
+    str_file * file2;
+    file1 = (str_file *) malloc(sizeof(str_file));
+    file2 = (str_file *) malloc(sizeof(str_file));
+
+    // Copio i due percorsi passati per parametro nel campo path delle rispettive strutture precedentemente dichiarate..
+    file1->path = (char*)malloc(sizeof(char) * strlen(file_path1));
+    strcpy(file1->path, file_path1);
+    file2->path = (char*)malloc(sizeof(char) * strlen(file_path2));
+    strcpy(file2->path, file_path2);
+
+    if ((file1->file = fopen(file1->path,"rb")) == NULL)  {
+        // Impossibile aprire path1
+        perror(file1->path);
+        exit(EXIT_FAILURE);
+    }
+    else if ((file2->file = fopen(file2->path,"rb")) == NULL)  {
+        // Impossibile aprire path1
+        perror(file2->path);
+        exit(EXIT_FAILURE);
+    }
+    else
+    {
+        int ris = 0;
+
+        // Obtain file1 dimension in bytes
+        fseek(file1->file, 0, SEEK_END);
+        file1->size = ftell(file1->file);
+        file1->line = (char *) malloc(file1->size);
+        fseek(file1->file, 0, SEEK_SET);  // Return to the top of the file
+
+        // Obtain file2 dimension in bytes
+        fseek(file2->file, 0, SEEK_END);
+        file2->size = ftell(file2->file);
+        file2->line = (char *) malloc(file2->size);
+        fseek(file2->file, 0, SEEK_SET);  // Return to the top of the file
+
+        // Read the entire file1 and file2
+        file1->read = fread(file1->line, file1->size, 1, file1->file);
+        file2->read = fread(file2->line, file2->size, 1, file2->file);
+
+        // Confronta se i files sono identici
+        ris = strcmp(file1->line , file2->line);
+
+        free(file1->line);
+        free(file2->line);
+        fclose(file1->file);
+        fclose(file2->file);
+
+        // Ritorna il risultato del confronto: 0 se i files sono identici.
+        return ris;
+    }
+}
+
+int dirwalk(char * path1, char * path2, int indent_limit, char symb)
 {
     struct dirent *dirent1, *dirent2;
     DIR *dir1, *dir2;
     struct stat stat1, stat2;
     int is_dir1, is_dir2;
 
+    int something_diff = 0;     // flag che indica quando due cartelle sono differenti o uguali.
     int indent_tab = 0;         // serve per dare una giusta indentazione al momento della stampa in console.
-    int i = 0;                  // tiene conto di quanti tab sono stati stampati
     int found = 0;              // serve per vedere se il file1 è stato trovato all'interno del path2.
 
     // La funzione opendir apre un directory stream.
@@ -221,7 +360,7 @@ void dirwalk(char * path1, char * path2, int indent, char symb)
                         // Setto il flag di found a 1 così riconosco che due files o directories hanno lo stesso nome..
                         found = 1;
 
-                        // Sto visualizzando il file per la prima volta..
+                        // Sto visualizzando il file percorsi la prima volta..
                         if(symb == '+') {
 
                             // Concateno il nome del file/directory al path originario per lavorare ricorsivamente sul path completo..
@@ -233,35 +372,53 @@ void dirwalk(char * path1, char * path2, int indent, char symb)
                             stat(completePath2, &stat2);
                             is_dir2 = ((stat2.st_mode & S_IFMT) == S_IFDIR);
 
-                            printf("Differences in %s\n", dirent1->d_name);
-                            printf("------------------------------\n");
-
                             if (is_dir1 && is_dir2) {
-                                //printf("\n");
 
-                                dirwalk(completePath1, completePath2, indent + 1, '+');
-                                dirwalk(completePath2, completePath1, indent + 1, '-');
-                            } else {
-                                //diffBetweenFiles(path1, path2);
-                                //diffBetweenFiles(path2, path1);
+                                // Stampo la sub-directory con lo stesso nome aumentando l'indent tab..
+                                for(indent_tab = 0; indent_tab < indent_limit; indent_tab++) { printf("  "); }
+                                printf ("%c %s\n", symb, dirent1->d_name);
+
+                                // Procedo in maniera ricorsiva sulle sub-directory aventi lo stesso nome in entrambi i path..
+                                dirwalk(completePath1, completePath2, indent_limit + 1, '+');
+                                dirwalk(completePath2, completePath1, indent_limit + 1, '-');
+
+                            } else if( are_equals(completePath1, completePath2) != 0) {
+
+                                    str_file * file1;
+                                    str_file * file2;
+                                    file1 = (str_file *) malloc(sizeof(str_file));
+                                    file2 = (str_file *) malloc(sizeof(str_file));
+
+                                    // Copio i due percorsi passati per parametro nel campo path delle rispettive strutture precedentemente dichiarate..
+                                    file1->path = (char*)malloc(sizeof(char) * strlen(completePath1));
+                                    strcpy(file1->path, completePath1);
+                                    file2->path = (char*)malloc(sizeof(char) * strlen(completePath2));
+                                    strcpy(file2->path, completePath2);
+
+                                    printIndented(dirent1->d_name, indent_limit);
+                                    //printf("Differences in %s\n", dirent1->d_name);
+                                    //printf("------------------------------\n");
+                                    diffBetweenFiles(file1, file2, indent_limit + 1);
+                                    //diffBetweenFiles(completePath2, completePath1, indent_limit + 1);
+                                    //printf("------------------------------\n");
                             }
-
-                            printf("------------------------------\n");
-                            free(completePath2);
+                            free(completePath2);    
                         }
                     }
+                    else { something_diff = 1; }
                 }
             }
 
             // A seconda che il file sia presente nel path2 stampo una + o -
             if(!found) {
-                for(i = 0; i < indent_tab; i++) { printf("  "); }
+                for(indent_tab = 0; indent_tab < indent_limit; indent_tab++) { printf("  "); }
                 printf ("%c %s\n", symb, dirent1->d_name);
             }
 
             free(completePath1);
             closedir(dir2);
         }
+        return something_diff;
     }
 
     // Chiude il directory stream.
@@ -308,7 +465,7 @@ int main (int argc, char **argv) {
 
     // Apro il file di log..
     openlog(argv[0], LOG_CONS || LOG_PID, LOG_LOCAL0);
-    syslog(LOG_INFO, "\nUtility started: %s\n", argv[0]);
+    syslog(LOG_INFO, "Utility started: %s", argv[0]);
 
     file1 = (str_file *) malloc(sizeof(str_file));
     file2 = (str_file *) malloc(sizeof(str_file));
@@ -319,8 +476,8 @@ int main (int argc, char **argv) {
     file2->path = (char*)malloc(sizeof(char) * strlen(argv[2]));
     strcpy(file2->path, argv[2]);
 
-    syslog(LOG_INFO, "\nPath 1: %s\n", file1->path);
-    syslog(LOG_INFO, "\nPath 2: %s\n", file2->path);
+    syslog(LOG_INFO, "\nPath 1: %s", file1->path);
+    syslog(LOG_INFO, "\nPath 2: %s", file2->path);
 
     printf("PATH1:  %s\n", file1->path);
     printf("PATH2:  %s\n", file2->path);
@@ -336,12 +493,12 @@ int main (int argc, char **argv) {
     int access_err2 = (stat(file2->path, &stbuf2) == -1);
     if ( access_err1 ) {
         fprintf(stderr, "Error: can't access %s\n", file1->path);
-        syslog(LOG_ERR, "Error: can't access %s\n", file1->path);
+        syslog(LOG_ERR, "Error: can't access %s", file1->path);
         exit(EXIT_FAILURE);
     }
     if ( access_err2) {
         fprintf(stderr, "Error: can't access %s\n", file2->path);
-        syslog(LOG_ERR, "Error: can't access %s\n", file2->path);
+        syslog(LOG_ERR, "Error: can't access %s", file2->path);
         exit(EXIT_FAILURE);
     }
 
@@ -352,29 +509,37 @@ int main (int argc, char **argv) {
     if(is_dir_1 && is_dir_2) {
 
         // I due percorsi rappresentano entrambi due directories..
-        syslog(LOG_INFO, "Both paths are directories.\nTerminated.\n");
+        syslog(LOG_INFO, "Both paths are directories. Terminated.");
 
         int indent = 1;
 
         // Differences from path1 to path2
-        dirwalk(file1->path, file2->path, indent, '+');
+        //dirwalk(file1->path, file2->path, indent, '+');
 
         // Differences from path2 to path1
-        dirwalk(file2->path, file1->path, indent, '-');
+        //dirwalk(file2->path, file1->path, indent, '-');
 
+
+        // test
+        if( are_equals_directories(file1->path, file2->path) == 1 ) {
+            printf("uguali\n");
+        }
+        else {
+            printf("diverse\n");
+        }
         printf("\n--------------------------------------------------------------------------------------------------\n");
     }
     else if(!is_dir_1 && !is_dir_2) {
 
         // I due percorsi rappresentano entrambi due files..
-        syslog(LOG_INFO, "Both paths are files.\nTerminated.\n");
-        diffBetweenFiles(file1, file2);
+        syslog(LOG_INFO, "Both paths are files. Terminated.");
+        diffBetweenFiles(file1, file2, 0);
     }
     else {
 
         // I due percorsi non possono essere comparati..
-        syslog(LOG_INFO, "Paths cannot be compared.\nTerminated.\n");
-        printf("You cannot compare two different kind of files (one directory one file)!\n");
+        syslog(LOG_INFO, "Paths cannot be compared. Terminated.");
+        printf("You cannot compare two different kind of files (one directory one file)!");
         exit(EXIT_FAILURE);
     }
 
