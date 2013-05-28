@@ -10,7 +10,7 @@ int n=10; //number of process
 typedef struct process_t
 {
 	int pid;
-	char* name;
+	char name[256];
 	char status;
 	int ppid;
 	int pgrp;
@@ -24,6 +24,28 @@ typedef struct process_t
 	unsigned long stime;
 	unsigned long ctime;
 }PROC;
+
+//stampa l'intero array di processi
+void stmpOfArray(PROC *proc,int len)
+{
+    int i;
+    for(i=0; i<len; i++)
+    {
+        //printf("%d\t%s\n",proc[i].pid,proc[i].name);
+				  printf("pid: %d\t%s\t\n",proc[i].pid,proc[i].name);
+		}
+}
+
+//stampa i processi interessati.
+void stmpProc(PROC *proc)
+{
+    int i;
+    for(i=0; i<n; i++)
+    {
+        //printf("%d\t%s\n",proc[i].pid,proc[i].name);
+				printf("pid: %d\t%s\t\n",proc[i].pid,proc[i].name);
+		}
+}
 
 /*
  *
@@ -63,6 +85,7 @@ int checkflag(int argc, char **argv) {
 
 /*
  * return the number of all the process running
+ * avoiding useless folder 
  */
 int  numberOfProcess()
 {
@@ -72,59 +95,68 @@ int  numberOfProcess()
     int nt=0;
     while ((dir = readdir(d)) != NULL)
     {
+      if(dir->d_name[0]>='0' && dir->d_name[0]<='9')
         nt++;
     }
     closedir(d);
     return nt;
 }
 
-//void listOfProcess(char *out[256],int len) 
-void listOfProcess(PROC *proc,int len) 
+/*
+* Riempie l'array di processi che deve guardare
+* ritorna il numero di cartelle in proc che non devono essere  
+*/
+int listOfProcess(PROC *proc,int len) 
 {
     int i;
     DIR *d = opendir("/proc/");
 		FILE *f;
     struct dirent *dir;
+    int nt=0;
 		for(i=0; i<len; i++)
     {
         dir= readdir(d);
         //out[i]=dir->d_name;
 				char path[300];
 				strcpy(path,"/proc/");
-				if(dir->d_name[0]>='0'&& dir->d_name[0]<='9')
+				if(dir->d_name[0]>='0' && dir->d_name[0]<='9')
 				{
 					strcat(path,dir->d_name);
 					strcat(path,"/stat");
 					f= fopen(path,"r");
 					if(f){
-						fscanf(f,"%d",&proc[i].pid);
-						//fscanf(f,"%s",proc[i].name);
+					  //leggo il contenuto di /proc/pid/stat
+					  fscanf(f,"%d %s %c %d %d %d %d %d %u %ul %ul %ul %ul %ul",
+					  &proc[i].pid,proc[i].name,&proc[i].status,&proc[i].ppid,
+					  &proc[i].pgrp,&proc[i].session,&proc[i].tty,&proc[i].tpgid,
+					  &proc[i].flags,&proc[i].minfaults,&proc[i].majfaults,
+					  &proc[i].utime,&proc[i].stime, &proc[i].ctime);
+					
+					  //rimuovo le parentesi dal nome.
+					  char *name = proc[i].name;
+					  int j=0;
+					  for(j=1;j<strlen(name)-1; j++)
+					    proc[i].name[j-1]=name[j];
+					  proc[i].name[j-1]='\0'; 
 					}
-				}
+				}else i--; //this is to avoid useless folder.
     }
     closedir(d);
-}
-//void stmpOfArray(char** arr,int len)
-void stmpOfArray(PROC *proc,int len)
-{
-    int i;
-    for(i=0; i<len; i++)
-    {
-        //printf("%d\t%s\n",proc[i].pid,proc[i].name);
-				printf("pid: %d\t%s\t potenza!\n",proc[i].pid,proc[i].name);
-		}
 }
 
 
 int main(int argc, char **argv) {
     if(checkflag(argc,argv)!=-1) {
-			printf ("n:%d\n",n);
-			//stmpOfArray(listOfProcess("/proc/"));
+			//printf ("n:%d\n",n);
 			int np=numberOfProcess();
-			printf ("total process:%d\n",np);
+			//printf ("total process:%d\n",np);
 			PROC proc[np];
 			listOfProcess(proc,np);
 			//stmpOfArray(proc,np);
+			while(1){
+			  stmpProc(proc);
+			  sleep(5);
+			}
     }
     return 0;
 }
