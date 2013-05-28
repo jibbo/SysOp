@@ -95,8 +95,9 @@ typedef struct {
 
 FILE* log_file;
 
-void dirwalk(char *, char*, int, char);
+void dirwalk(char *, char *, int, char);
 void diffBetweenFiles(str_file *, str_file *);
+void getCompletePath(char *, char *, char *);
 
 #endif
 
@@ -104,6 +105,24 @@ void diffBetweenFiles(str_file *, str_file *);
 
 
 #include "lib_equal.h"
+
+void getCompletePath(char * completePath, char * path, char * filename) {
+
+    //size_t length = strlen(path) + strlen(filename) + 2;
+
+    printf("path prima: %s\n",completePath);
+    completePath = strcpy(completePath, path);
+    completePath = strcat(path, "/");
+    completePath = strcat(completePath, filename);
+    printf("path dopo: %s\n",completePath);
+    //char * tmp;
+    //tmp = (char *) malloc(sizeof(char) * length);
+    /*
+    snprintf(tmp, strlen(path) + 1, "%s", path);
+    snprintf(path, length, "%s/%s", tmp, filename);
+    free(tmp);
+    */
+}
 
 void diffBetweenFiles(str_file * file1, str_file * file2) {
     // Files case..
@@ -167,7 +186,9 @@ void dirwalk(char * path1, char * path2, int indent, char symb)
     struct stat stat1, stat2;
     int is_dir1, is_dir2;
 
-    int found = 0; // serve per vedere se il file1 è stato trovato all'interno del path2
+    int indent_tab = 0;         // serve per dare una giusta indentazione al momento della stampa in console.
+    int i = 0;                  // tiene conto di quanti tab sono stati stampati
+    int found = 0;              // serve per vedere se il file1 è stato trovato all'interno del path2.
 
     // La funzione opendir apre un directory stream.
     // Restituisce un puntatore ad un oggetto di tipo DIR in caso di successo e NULL in caso di errore.
@@ -184,67 +205,70 @@ void dirwalk(char * path1, char * path2, int indent, char symb)
         exit(EXIT_FAILURE);
     }
 
+    // Cicla tutti i files e directory presenti all'interno del path specificato.
     // La funzione readdir legge la voce corrente nella directory, posizionandosi sulla voce successiva.
     // Restituisce un puntatore al directory stream in caso di successo e NULL in caso di errore.
-    // Loop on directory entries
     while ((dirent1 = readdir(dir1)) != NULL) {
 
         if (strcmp(dirent1->d_name, ".") != 0 && strcmp(dirent1->d_name, "..") != 0) {
 
             // Concateno il nome del file/directory al path originario per lavorare ricorsivamente sul path completo..
-            size_t length = strlen(path1) + strlen(dirent1->d_name) + 2;
-            char * concat = (char *) malloc(sizeof(char) * length);
-            snprintf(concat, length, "%s/%s", path1, dirent1->d_name);
+            // Serve per tenere traccia del path completo dove si trova il file o la directory che si sta analizzando.
+            size_t length1 = strlen(path1) + strlen(dirent1->d_name) + 2;
+            char * completePath1 = (char *) malloc(sizeof(char) * length1);
+            snprintf(completePath1, length1, "%s/%s", path1, dirent1->d_name);
 
             found = 0;
 
             // Valuto se si tratta di una sub-directory..
-            stat(concat, &stat1);
+            stat(completePath1, &stat1);
             is_dir1 = ((stat1.st_mode & S_IFMT) == S_IFDIR);
-            if (is_dir1) {
-                //printf ("%s/\n" , dirent1->d_name);
-                //dirwalk(concat, path2, indent + 1);
-                printf("dir!\n");
-            } else {
 
-                //printf("file: %s in %s\n", dirent1->d_name, path1);
+            // Scorro tutta la seconda directory e controllo se il file è presente
+            while ((dirent2 = readdir(dir2)) != NULL) {
 
-                // Se presente
-                //printf ("+ %s\n" , dirent1->d_name);
-                // Se non presente
-                //printf ("- %s\n" , dirent1->d_name);
+                // Verifico che non siano le entries di default delle directories..
+                if (strcmp(dirent2->d_name, ".") != 0 && strcmp(dirent2->d_name, "..") != 0) {
 
-                // Scorro tutta la seconda directory e controllo se il file è presente
-                // Se il dirent1->path è presente in dir2 allroa stampo una + altrimenti una -
-                while ((dirent2 = readdir(dir2)) != NULL) {
+                    // Se i files o le directories hanno lo stesso nome..
+                    if(strcmp(dirent1->d_name, dirent2->d_name) == 0) {
 
-                    if (strcmp(dirent2->d_name, ".") != 0 && strcmp(dirent2->d_name, "..") != 0) {
+                        // Setto il flag di found a 1 così riconosco che due files o directories hanno lo stesso nome..
+                        found = 1;
 
                         // Concateno il nome del file/directory al path originario per lavorare ricorsivamente sul path completo..
-                        /*
-                        size_t length = strlen(path2) + strlen(dirent2->d_name) + 2;
-                        char * concat = (char *) malloc(sizeof(char) * length);
-                        snprintf(concat, length, "%s/%s", path2, dirent2->d_name);
-                        */
-                        //printf("  analizzo file %s = ",dirent2->d_name );
-                        if(strcmp(dirent1->d_name, dirent2->d_name) == 0) {
-                            found = 1;
-                        } 
+                        // Serve per tenere traccia del path completo dove si trova il file o la directory che si sta analizzando.
+                        size_t length2 = strlen(path2) + strlen(dirent2->d_name) + 2;
+                        char * completePath2 = (char *) malloc(sizeof(char) * length2);
+                        snprintf(completePath2, length2, "%s/%s", path2, dirent2->d_name);
 
-                        //free(concat);
+                        stat(completePath2, &stat2);
+                        is_dir2 = ((stat2.st_mode & S_IFMT) == S_IFDIR);
+
+                        printf("Differences in %s\n", dirent1->d_name);
+                        printf("------------------------------\n");
+
+                        if (is_dir1 && is_dir2) {
+                            dirwalk(completePath1, completePath2, indent + 1, '+');
+                            dirwalk(completePath2, completePath1, indent + 1, '-');
+                        } else {
+                            //diffBetweenFiles(path1, path2);
+                            //diffBetweenFiles(path2, path1);
+                        }
+
+                        printf("------------------------------\n");
+                        free(completePath2);
                     }
-                }
-
-                // A seconda che il file sia presente nel path2 stampo una + o -
-                if(!found) {
-                    // indentation
-                    int i = 0;
-                    while(i++ < indent) { printf("  "); }
-                    printf ("%c %s\n", symb, dirent1->d_name);
                 }
             }
 
-            free(concat);
+            // A seconda che il file sia presente nel path2 stampo una + o -
+            if(!found) {
+                for(i = 0; i < indent_tab; i++) { printf("  "); }
+                printf ("%c %s\n", symb, dirent1->d_name);
+            }
+
+            free(completePath1);
         }
     }
 
@@ -341,11 +365,12 @@ int main (int argc, char **argv) {
 
         int indent = 1;
 
-        //printf ("Differences in %s/\n", file1->path);
+        // Differences from path1 to path2
         dirwalk(file1->path, file2->path, indent, '+');
 
-        //printf ("Differences in %s/\n", file2->path);
+        // Differences from path2 to path1
         dirwalk(file2->path, file1->path, indent, '-');
+
         printf("\n--------------------------------------------------------------------------------------------------\n");
     }
     else if(!is_dir_1 && !is_dir_2) {
