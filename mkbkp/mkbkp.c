@@ -10,13 +10,18 @@
 #include <sys/types.h>
 
 void scanworkingdir(char*, int);
-void createarchive(char* filename);
+void createarchive(char* archivename);
+void showparametererror(int optvalue, int flag, int parameter);
 void printhelp();
+
+FILE* archive;
 
 int main(int argc, char **argv) {
   int c_flag = 0;
   int x_flag = 0;
   int t_flag = 0;
+
+  int f_flag = 0;
 
   char *dirvalue = NULL;
   int index;
@@ -26,34 +31,33 @@ int main(int argc, char **argv) {
   
   while ((c = getopt (argc, argv, "f:cxt")) != -1) {
     switch (c) {
-      // In questo caso l'utility deve creare (od estrarre) l'archivio che viene passato come parametro
       case 'f':
+        f_flag = 1;
         dirvalue = optarg;
         printf("Creating an archive from the directory: %s\n", dirvalue);
         scanworkingdir(dirvalue, 2);
         break;
 
-      // In questo caso l'utility deve creare l'archivio
       case 'c':
-        c_flag = 1;
+        c_flag = 1;    
+        showparametererror(optopt, f_flag, c);
         break;
 
-      // In questo caso l'utility deve estrarre l'archivio nella directory corrente
       case 'x':
         x_flag = 1;
+        showparametererror(optopt, f_flag, c);
         break;
 
-      // In questo caso l'utility deve visualizzare un elenco del contenuto dell'archivio
       case 't':
         t_flag = 1;
+        showparametererror(optopt, f_flag, c);
         break;
 
-      // 
       case '?':
         if (optopt == 'f') {
           fprintf (stderr, "Option -%c requires an argument.\n", optopt);
         } else if (isprint (optopt)) {
-          fprintf (stderr, "Unknown option `-%c'\n", optopt);
+          fprintf (stderr, "Unknown option '-%c'\n", optopt);
           printhelp();
         } else {
           fprintf (stderr, "Unknown option character `\\x%x'.\n", optopt);
@@ -64,12 +68,6 @@ int main(int argc, char **argv) {
         abort ();
     }
   }
-
-  printf ("\nc = %d, x = %d, t = %d, dirvalue = %s\n",  c_flag, x_flag, t_flag, dirvalue);
-
-  for (index = optind; index < argc; index++)
-   printf ("Non-option argument %s\n", argv[index]);
-
   return 0;
 }
 
@@ -78,11 +76,23 @@ void printhelp() {
   printf("\t -f to create or extract an archive");
   printf("\n\t -c to create a new archive");
   printf("\n\t -x to extract an archive in the current directory");
-  printf("\n\t -t to displat the content of an archive\n");
+  printf("\n\t -t to display the content of an archive\n");
 }
 
-void createarchive(char* filename) {
+void showparametererror(int optvalue, int flag, int parameter) {
+  if(optvalue = 'f' && !flag) {
+    if(parameter == 'c') {
+      printf("You must use the -f flag to specify the archive you want to create\n");
+    } else if(parameter == 'x') {
+      printf("You must use the -f flag to specify the archive you want to extract\n");
+    } else if(parameter == 't') {
+      printf("You must use the -f flag to specify the archive you want to analyze\n");
+    }
+  }
+}
 
+void createarchive(char* archivename) {
+  archive = fopen(archivename, "w");
 }
 
 void scanworkingdir(char* path, int indent) {
