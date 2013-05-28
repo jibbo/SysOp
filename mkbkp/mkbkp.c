@@ -9,18 +9,26 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-void scanworkingdir(char*, int);
-void createarchive(char* archivename);
-void showparametererror(int optvalue, int flag, int parameter);
-void printhelp();
+#include <syslog.h>
 
-FILE* archive;
+typedef struct {
+    char * path;
+    FILE * file;
+    char * line;
+    size_t size;
+    ssize_t read;
+} file;
+
+void scanworkingdir(char*, int);
+void printhelp();
+void showparametererror(int optvalue, int flag, int parameter);
+void createarchive(char* filename);
+bool filealredyexists(const char*);
 
 int main(int argc, char **argv) {
   int c_flag = 0;
   int x_flag = 0;
   int t_flag = 0;
-
   int f_flag = 0;
 
   char *dirvalue = NULL;
@@ -34,7 +42,7 @@ int main(int argc, char **argv) {
       case 'f':
         f_flag = 1;
         dirvalue = optarg;
-        printf("Creating an archive from the directory: %s\n", dirvalue);
+        //printf("Creating an archive from the directory: %s\n", dirvalue);
         scanworkingdir(dirvalue, 2);
         break;
 
@@ -55,7 +63,7 @@ int main(int argc, char **argv) {
 
       case '?':
         if (optopt == 'f') {
-          fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+          fprintf (stderr, "Option -%c requires the archive as an argument\n", optopt);
         } else if (isprint (optopt)) {
           fprintf (stderr, "Unknown option '-%c'\n", optopt);
           printhelp();
@@ -80,6 +88,10 @@ void printhelp() {
 }
 
 void showparametererror(int optvalue, int flag, int parameter) {
+  printf("optvalue: %c\n", optvalue);
+  printf("flag: %i\n", flag);
+  printf("parameter: %c\n", parameter);
+
   if(optvalue = 'f' && !flag) {
     if(parameter == 'c') {
       printf("You must use the -f flag to specify the archive you want to create\n");
@@ -91,8 +103,17 @@ void showparametererror(int optvalue, int flag, int parameter) {
   }
 }
 
-void createarchive(char* archivename) {
-  archive = fopen(archivename, "w");
+void createarchive(char* filename) {
+
+}
+
+bool filealredyexists(const char* filename) {
+  FILE * file = fopen(filename, "r");
+  if(file) {
+    fclose(file);
+    return true;
+  }
+  return false;
 }
 
 void scanworkingdir(char* path, int indent) {
