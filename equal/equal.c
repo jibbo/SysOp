@@ -78,7 +78,6 @@ int pop (stack * s) {
 #ifndef EQUAL_H
 
 #define EQUAL_H
-#define LOG_PATH  "/var/log/utility/equal.log"
 
 #include <sys/dir.h>
 #include <sys/stat.h>
@@ -96,8 +95,8 @@ typedef struct {
 
 FILE* log_file;
 
-void dirwalk(char *, int);
-void diffBetweenFiles(str_file *,  str_file *);
+void dirwalk(char *, char*, int, char);
+void diffBetweenFiles(str_file *, str_file *);
 
 #endif
 
@@ -161,56 +160,98 @@ void diffBetweenFiles(str_file * file1, str_file * file2) {
     }
 }
 
-void dirwalk(char * path, int indent)
+void dirwalk(char * path1, char * path2, int indent, char symb)
 {
-    struct dirent* direntry;
-    DIR* dir;   // file descriptor usato per la gestione del directory stream
-    struct stat stbuf;
-    int is_dir;
-    int access_err;
+    struct dirent *dirent1, *dirent2;
+    DIR *dir1, *dir2;
+    struct stat stat1, stat2;
+    int is_dir1, is_dir2;
 
-    //printf("tento di aprire %s\n", path);
+    int found = 0; // serve per vedere se il file1 è stato trovato all'interno del path2
 
     // La funzione opendir apre un directory stream.
     // Restituisce un puntatore ad un oggetto di tipo DIR in caso di successo e NULL in caso di errore.
     // Inoltre posiziona lo stream sulla prima voce contenuta nella directory.
-    if ((dir = opendir(path)) == NULL) { 
-        printf("dirwalk: can't open %s\n", path);
-        return;
+
+    if ((dir1 = opendir(path1)) == NULL) { 
+        printf("Cannot open %s\n", path1);
+        syslog(LOG_INFO, "Cannot open %s.\nTerminated.\n", path1);
+        exit(EXIT_FAILURE);
+    }
+    if ((dir2 = opendir(path2)) == NULL) { 
+        printf("Cannot open %s\n", path2);
+        syslog(LOG_INFO, "Cannot open %s.\nTerminated.\n", path2);
+        exit(EXIT_FAILURE);
     }
 
     // La funzione readdir legge la voce corrente nella directory, posizionandosi sulla voce successiva.
     // Restituisce un puntatore al directory stream in caso di successo e NULL in caso di errore.
     // Loop on directory entries
-    while ((direntry = readdir(dir)) != NULL) {
+    while ((dirent1 = readdir(dir1)) != NULL) {
 
-        if (strcmp(direntry->d_name, ".") == 0 || strcmp(direntry->d_name, "..") == 0)
-            continue;    /* skip self and parent */
+        if (strcmp(dirent1->d_name, ".") != 0 && strcmp(dirent1->d_name, "..") != 0) {
 
-        size_t length = strlen(path) + strlen(direntry->d_name) + 2;
-        char * concat = (char *) malloc(sizeof(char) * length);
-        snprintf(concat, length, "%s/%s", path, direntry->d_name);
-        stat(concat, &stbuf);
+            // Concateno il nome del file/directory al path originario per lavorare ricorsivamente sul path completo..
+            size_t length = strlen(path1) + strlen(dirent1->d_name) + 2;
+            char * concat = (char *) malloc(sizeof(char) * length);
+            snprintf(concat, length, "%s/%s", path1, dirent1->d_name);
 
-        // indentation
-        int i = 0;
-        while(i++ < indent) { 
-            printf("  ");
+            found = 0;
+
+            // Valuto se si tratta di una sub-directory..
+            stat(concat, &stat1);
+            is_dir1 = ((stat1.st_mode & S_IFMT) == S_IFDIR);
+            if (is_dir1) {
+                //printf ("%s/\n" , dirent1->d_name);
+                //dirwalk(concat, path2, indent + 1);
+                printf("dir!\n");
+            } else {
+
+                //printf("file: %s in %s\n", dirent1->d_name, path1);
+
+                // Se presente
+                //printf ("+ %s\n" , dirent1->d_name);
+                // Se non presente
+                //printf ("- %s\n" , dirent1->d_name);
+
+                // Scorro tutta la seconda directory e controllo se il file è presente
+                // Se il dirent1->path è presente in dir2 allroa stampo una + altrimenti una -
+                while ((dirent2 = readdir(dir2)) != NULL) {
+
+                    if (strcmp(dirent2->d_name, ".") != 0 && strcmp(dirent2->d_name, "..") != 0) {
+
+                        // Concateno il nome del file/directory al path originario per lavorare ricorsivamente sul path completo..
+                        /*
+                        size_t length = strlen(path2) + strlen(dirent2->d_name) + 2;
+                        char * concat = (char *) malloc(sizeof(char) * length);
+                        snprintf(concat, length, "%s/%s", path2, dirent2->d_name);
+                        */
+                        //printf("  analizzo file %s = ",dirent2->d_name );
+                        if(strcmp(dirent1->d_name, dirent2->d_name) == 0) {
+                            found = 1;
+                        } 
+
+                        //free(concat);
+                    }
+                }
+
+                // A seconda che il file sia presente nel path2 stampo una + o -
+                if(!found) {
+                    // indentation
+                    int i = 0;
+                    while(i++ < indent) { printf("  "); }
+                    printf ("%c %s\n", symb, dirent1->d_name);
+                }
+            }
+
+            free(concat);
         }
-
-        is_dir = ((stbuf.st_mode & S_IFMT) == S_IFDIR);
-        if (is_dir) {
-            printf ("%s/\n" , direntry->d_name );
-            dirwalk(concat, indent + 1);
-        } else {
-            printf ("%s\n" , direntry->d_name);
-        }
-        free(concat);
     }
 
     // Chiude il directory stream.
     // La funzione restituisce 0 in caso di successo e -1 altrimenti, 
-    closedir(dir);
+    closedir(dir1);
+    closedir(dir2);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -249,50 +290,79 @@ int main (int argc, char **argv) {
 
     str_file * file1;
     str_file * file2;
+
+    // Apro il file di log..
+    openlog(argv[0], LOG_CONS || LOG_PID, LOG_LOCAL0);
+    syslog(LOG_INFO, "\nUtility started: %s\n", argv[0]);
+
     file1 = (str_file *) malloc(sizeof(str_file));
     file2 = (str_file *) malloc(sizeof(str_file));
 
-    // Copy argv parameters into path1 and path2..
+    // Copio i due percorsi passati per parametro nel campo path delle rispettive strutture precedentemente dichiarate..
     file1->path = (char*)malloc(sizeof(char) * strlen(argv[1]));
     strcpy(file1->path, argv[1]);
     file2->path = (char*)malloc(sizeof(char) * strlen(argv[2]));
     strcpy(file2->path, argv[2]);
 
+    syslog(LOG_INFO, "\nPath 1: %s\n", file1->path);
+    syslog(LOG_INFO, "\nPath 2: %s\n", file2->path);
+
     printf("PATH1:  %s\n", file1->path);
     printf("PATH2:  %s\n", file2->path);
     printf("\n\n");
 
+    // Dichiaro due strutture di tipo stat che mi serviranno per estrarre informazioni relative ai due percorsi dei files..
     struct stat stbuf1;
     struct stat stbuf2;
 
+    // Valuto se i due percorsi hanno particolari restrizioni di accesso..
+    // In caso di errore esco e aggiungo un nuovo messaggio al file di log..
     int access_err1 = (stat(file1->path, &stbuf1) == -1);
     int access_err2 = (stat(file2->path, &stbuf2) == -1);
     if ( access_err1 ) {
         fprintf(stderr, "Error: can't access %s\n", file1->path);
+        syslog(LOG_ERR, "Error: can't access %s\n", file1->path);
         exit(EXIT_FAILURE);
     }
     if ( access_err2) {
         fprintf(stderr, "Error: can't access %s\n", file2->path);
+        syslog(LOG_ERR, "Error: can't access %s\n", file2->path);
         exit(EXIT_FAILURE);
     }
 
+    // Valuto se i due percorsi sono delle directories..
+    int is_dir_1 = ((stbuf1.st_mode & S_IFMT) == S_IFDIR);
+    int is_dir_2 = ((stbuf2.st_mode & S_IFMT) == S_IFDIR);
+
     if(is_dir_1 && is_dir_2) {
 
-        // Directories case..
+        // I due percorsi rappresentano entrambi due directories..
+        syslog(LOG_INFO, "Both paths are directories.\nTerminated.\n");
+
         int indent = 1;
-        printf ("%s/\n", file1->path );
-        dirwalk(file1->path, indent);
+
+        //printf ("Differences in %s/\n", file1->path);
+        dirwalk(file1->path, file2->path, indent, '+');
+
+        //printf ("Differences in %s/\n", file2->path);
+        dirwalk(file2->path, file1->path, indent, '-');
         printf("\n--------------------------------------------------------------------------------------------------\n");
-        printf ("%s/\n", file2->path );
-        dirwalk(file2->path, indent);
     }
     else if(!is_dir_1 && !is_dir_2) {
+
+        // I due percorsi rappresentano entrambi due files..
+        syslog(LOG_INFO, "Both paths are files.\nTerminated.\n");
         diffBetweenFiles(file1, file2);
     }
     else {
+
+        // I due percorsi non possono essere comparati..
+        syslog(LOG_INFO, "Paths cannot be compared.\nTerminated.\n");
         printf("You cannot compare two different kind of files (one directory one file)!\n");
+        exit(EXIT_FAILURE);
     }
 
+    // Libero la memoria allocata dalle strutture files
     free(file1);
     free(file2);
     exit(EXIT_SUCCESS);
