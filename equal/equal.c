@@ -237,10 +237,10 @@ void dirwalk(char * path1, char * path2, int indent, char symb)
                             printf("------------------------------\n");
 
                             if (is_dir1 && is_dir2) {
-                                printf("\n");
+                                //printf("\n");
 
-                                //dirwalk(completePath1, completePath2, indent + 1, '+');
-                                //dirwalk(completePath2, completePath1, indent + 1, '-');
+                                dirwalk(completePath1, completePath2, indent + 1, '+');
+                                dirwalk(completePath2, completePath1, indent + 1, '-');
                             } else {
                                 //diffBetweenFiles(path1, path2);
                                 //diffBetweenFiles(path2, path1);
