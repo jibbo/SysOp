@@ -43,7 +43,7 @@ typedef struct mini_process_t
     int pid;
     char* name;
     int ppid;
-    float time;
+    unsigned long cpu;
 }MINI_PROC;
 
 
@@ -66,8 +66,8 @@ void stmpProc(MINI_PROC *proc)
     for(i=0; i<n; i++)
     {
         //printf("%d\t%s\n",proc[i].pid,proc[i].name);
-        printw("pid: %d  \tppid: %d  \tname: %s top \ttime:%u\n",proc[i].pid,proc[i].ppid,
-            proc[i].name,proc[i].time );
+        printw("pid: %d  \tppid: %d  \tname: %s  \tcpu:%lu\n",proc[i].pid,proc[i].ppid,
+            proc[i].name,proc[i].cpu);
     }
     refresh();
 }
@@ -110,7 +110,7 @@ void *updateVariables()
 {
     while(true)
     {
-        char c=getch();
+        char c = getch();
         if(c>='0' && c<='9')
             seconds=atoi(&c);
         else if(c=='q'){
@@ -169,7 +169,8 @@ int listOfProcess(PROC *proc,int len)
                 int j=0;
                 for(j=1;j<strlen(name)-1; j++)
                     proc[i].name[j-1]=name[j];
-                proc[i].name[j-1]='\0'; 
+                proc[i].name[j-1]='\0';
+                close(f);
             }
         }
         else i--; //this is to avoid useless folder.
@@ -177,11 +178,30 @@ int listOfProcess(PROC *proc,int len)
     closedir(d);
 }
 
+void getTotalTime(int *out){
+   FILE *f= fopen("/proc/stat","r"); 
+   if(f)
+   {
+        int user=0,nice=0,sys=0;
+        char cpu[10];
+        fscanf(f,"%s %d %d %d",cpu,&user,&nice,&sys);
+        *out=user+nice+sys;
+        close(f);
+   }
+}
+
 int cmpfunc (const void * a, const void * b)
 {
-   return ( *(float*)a - *(float*)b );
+    MINI_PROC *l =(MINI_PROC *)a;
+    MINI_PROC *r =(MINI_PROC *)b;
+    if(l->cpu > r->cpu)
+        return 1;
+    if(l->cpu < r->cpu)
+        return -1;
+    return 0;
 }
-void topTimes(PROC* before,PROC* after, MINI_PROC* out,int len)
+void *topTimes(PROC* before,PROC* after, MINI_PROC* out,int len,
+    int timeTotalBefore,int timeTotalAfter)
 {
     MINI_PROC tmp[len];
     int i=0;
@@ -190,12 +210,23 @@ void topTimes(PROC* before,PROC* after, MINI_PROC* out,int len)
         tmp[i].pid=after[i].pid;
         tmp[i].ppid=after[i].ppid;
         tmp[i].name=after[i].name;
-        tmp[i].time=((after[i].stime+after[i].utime)-(before[i].stime+before[i].utime))/100;
+        float timeTotalAfter=after[i].stime+after[i].utime;
+        float timeTotalBefore=before[i].stime+before[i].utime;
+        if(after[i].status=='S')
+            tmp[i].cpu=0;
+        else
+            tmp[i].cpu=100.0*(((after[i].stime+after[i].utime)-
+                (before[i].stime+before[i].utime))/
+                (timeTotalAfter-timeTotalBefore));
     }
     qsort(tmp, len, sizeof(MINI_PROC), cmpfunc);
-    for(i=len-1;i>0;i--)
+    int j=0;
+    for(i=n-1;i>=0;i--)
     {
-        out[i]=tmp[i];
+        out[j].pid=tmp[i].pid;
+        out[j].ppid=tmp[i].ppid;
+        out[j].name=tmp[i].name;
+        j++;
     }
 }
 
@@ -220,17 +251,24 @@ int main(int argc, char **argv)
          unsigned long oldTimes[np];
          initscr();
          pthread_create(&look, NULL, updateVariables, NULL);
+         int timeTotalBefore=0;
+         getTotalTime(&timeTotalBefore);
          while(1)
          {
             sleep(seconds);
             PROC proc[np];
             listOfProcess(proc,np);
             MINI_PROC out[n];
-            topTimes(old_proc,proc,out,np);
+            int timeTotalAfter=0;
+            getTotalTime(&timeTotalAfter);
+            topTimes(old_proc,proc,out,np,timeTotalBefore,timeTotalAfter);
             copyProc(old_proc,proc,np);
             clear();
+            // printw("TotalTime spent: %d\n",timeTotalAfter-timeTotalBefore);
+            // refresh();
+            timeTotalBefore=timeTotalAfter;
             stmpProc(out);
-            printw("\n\n");
+            
         }
         endwin();
     }
