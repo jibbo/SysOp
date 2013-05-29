@@ -61,13 +61,18 @@ void diffBetweenFiles(char * path1, char * path2, int indent_limit) {
     file2->path = (char*)malloc(sizeof(char) * strlen(path2));
     strcpy(file2->path, path2);
 
-    if ((file1->file = fopen(file1->path,"rb")) == NULL) {
+    printf("%s\n", file1->path);
+    printf("%s\n", file2->path);
+
+    file1->file = fopen(file1->path,"rb");
+    if (file1->file == NULL) {
         // Impossibile aprire path1
         perror(file1->path);
         exit(EXIT_FAILURE);
     }
-    
-    if ((file2->file = fopen(file2->path,"rb")) == NULL)  {
+
+    file2->file = fopen(file2->path,"rb");
+    if (file2->file == NULL)  {
         // Impossibile aprire path1
         perror(file2->path);
         exit(EXIT_FAILURE);
@@ -81,20 +86,110 @@ void diffBetweenFiles(char * path1, char * path2, int indent_limit) {
     printf("\n-----------------------------------");
     */
 
+        char buffer[128];
+
+        // Obtain file1 dimension in bytes
+        fseek(file1->file, 0, SEEK_END);
+        file1->size = ftell(file1->file);
+        file1->line = (char *) malloc(file1->size);
+        fseek(file1->file, 0, SEEK_SET);  // Return to the top of the file
+        //file1->read = fread(file1->line, file1->size, 1, file1->file);
+        //printf("\nfile1:\n%s\n----------------------------\n\n\nora bello\n\n", file1->line);
+
+
+        // Obtain file2 dimension in bytes
+        fseek(file2->file, 0, SEEK_END);
+        file2->size = ftell(file2->file);
+        file2->line = (char *) malloc(file2->size);
+        fseek(file2->file, 0, SEEK_SET);  // Return to the top of the file
+
+
+        int  count, total = 0;
+        /* Cycle until end of file reached: */
+        while( !feof( file1->file ) )
+        {
+            /* Attempt to read in 10 bytes: */
+            //buffer, sizeof( char ), 100, stream
+            count = fread(buffer, sizeof(char), 128, file1->file);
+            if( ferror( file1->file ) ) {
+                perror( "Read error" );
+                printf("errorr\n");
+                break;
+            }
+            else {
+                printf("%s\n", buffer);
+            }
+
+            /* Total up actual bytes read */
+            total += count;
+        }
+        printf( "Number of bytes read = %d\n", total );
+        printf( "Number of bytes del file = %d\n\n\n", file1->size );
+
+        total = 0;
+        /* Cycle until end of file reached: */
+        while( !feof( file2->file ) )
+        {
+            /* Attempt to read in 10 bytes: */
+            //buffer, sizeof( char ), 100, stream
+            count = fread(buffer, sizeof(char), 128, file2->file);
+            if( ferror( file2->file ) ) {
+                perror( "Read error" );
+                break;
+            }
+            else  {
+                printf("%s\n", buffer);
+            }
+
+            /* Total up actual bytes read */
+            total += count;
+        }
+        printf( "Number of bytes read = %d\n", total );
+
+    /*
+
+    // Obtain file1 dimension in bytes
+    fseek(file1->file, 0, SEEK_END);
+    file1->size = ftell(file1->file);
+    file1->line = (char *) malloc(file1->size);
+    fseek(file1->file, 0, SEEK_SET);  // Return to the top of the file
+
+    // Obtain file2 dimension in bytes
+    fseek(file2->file, 0, SEEK_END);
+    file2->size = ftell(file2->file);
+    file2->line = (char *) malloc(file2->size);
+    fseek(file2->file, 0, SEEK_SET);  // Return to the top of the file
+
     // Read the entire file1 and file2
     file1->read = fread(file1->line, file1->size, 1, file1->file);
     file2->read = fread(file2->line, file2->size, 1, file2->file);
-
-    /*
+    
     printf("\nfile1:\n%s\n----------------------------", file1->line);
     printf("\nfile2:\n%s\n----------------------------", file2->line);
+
+    char buffer[1];
+    while (fread(buffer, sizeof buffer, 1, file1->file) == 1)
+    {
+       printf("%d\n", buffer[0]);
+    }
+
+    if (feof(file1->file))
+    {
+      printf("finito\n");
+    }
+    else
+    {
+      printf("errorreeeeeeeee\n");
+    }
     */
+
+    /*
 
     if(strcmp(file1->line , file2->line) == 0) {
         printIndented("I files sono uguali!", indent_limit);
     } else {
         printIndented("I files sono diversi!", indent_limit);
-    }
+    }*/
 
     fclose(file1->file);
     fclose(file2->file);
@@ -132,7 +227,6 @@ int empty_directories(char * completePath1, char * completePath2) {
         }
     }
     closedir(dir);
-    printf("vuote\n");
     return 1;
 }
 
@@ -372,7 +466,7 @@ void dirwalk(char * path1, char * path2, int indent_limit, char symb)
                                     dirwalk(completePath2, completePath1, indent_limit + 1, '-');
                                     printf("------------------------------\n");
                                 }
-                                
+
                             } else {
 
                                 if(are_equals(completePath1, completePath2) != 1) {
