@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <ncurses.h>
+#include <pthread.h>
 
 //number of process show
 int n=10; 
@@ -105,6 +106,21 @@ int checkflag(int argc, char **argv)
     }
 }
 
+void *updateVariables()
+{
+    while(true)
+    {
+        char c=getch();
+        if(c>='0' && c<='9')
+            seconds=atoi(&c);
+        else if(c=='q'){
+            endwin();
+            exit(EXIT_SUCCESS);
+        }
+    }
+
+}
+
 //return the number of all the process running
 //avoiding useless folder 
 int  numberOfProcess()
@@ -174,11 +190,7 @@ void topTimes(PROC* before,PROC* after, MINI_PROC* out,int len)
         tmp[i].pid=after[i].pid;
         tmp[i].ppid=after[i].ppid;
         tmp[i].name=after[i].name;
-        if((after[i].stime+before[i].stime)!=0)
-            tmp[i].time=100*((after[i].stime-before[i].stime)/
-                (after[i].stime+before[i].stime));
-        else
-            tmp[i].time=(after[i].stime-before[i].stime);
+        tmp[i].time=((after[i].stime+after[i].utime)-(before[i].stime+before[i].utime))/100;
     }
     qsort(tmp, len, sizeof(MINI_PROC), cmpfunc);
     for(i=len-1;i>0;i--)
@@ -201,11 +213,13 @@ int main(int argc, char **argv)
     if(checkflag(argc,argv)!=-1) 
     {
          int np=numberOfProcess();
+         pthread_t look;
          PROC old_proc[np];
          listOfProcess(old_proc,np);
          //stmpOfArray(proc,np);
          unsigned long oldTimes[np];
          initscr();
+         pthread_create(&look, NULL, updateVariables, NULL);
          while(1)
          {
             sleep(seconds);
@@ -216,7 +230,7 @@ int main(int argc, char **argv)
             copyProc(old_proc,proc,np);
             clear();
             stmpProc(out);
-            printf("\n\n");
+            printw("\n\n");
         }
         endwin();
     }
