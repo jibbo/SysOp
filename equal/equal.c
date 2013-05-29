@@ -96,6 +96,7 @@ typedef struct {
 void dirwalk(char *, char *, int, char);
 void diffBetweenFiles(str_file *, str_file *, int);
 int are_equals(char *, char *);
+int are_equals_directories(char *, char *);
 void printIndented(char *, int);
 
 #endif
@@ -176,7 +177,7 @@ int are_equals_directories(char * path1, char * path2) {
     struct stat stat1, stat2;
     int is_dir1, is_dir2;
 
-    int equal_dir = 1;
+    int equal_dir = 0;
 
     if ((dir1 = opendir(path1)) == NULL) { 
         printf("Cannot open %s\n", path1);
@@ -184,7 +185,9 @@ int are_equals_directories(char * path1, char * path2) {
         exit(EXIT_FAILURE);
     }
 
-    while ((dirent1 = readdir(dir1)) != NULL && equal_dir) {
+    while ((dirent1 = readdir(dir1)) != NULL) {
+
+        equal_dir = 0;
 
         if (strcmp(dirent1->d_name, ".") != 0 && strcmp(dirent1->d_name, "..") != 0) {
 
@@ -205,7 +208,7 @@ int are_equals_directories(char * path1, char * path2) {
             }
 
             // Scorro tutta la seconda directory e controllo se il file è presente
-            while ((dirent2 = readdir(dir2)) != NULL && equal_dir) {
+            while ((dirent2 = readdir(dir2)) != NULL) {
 
                 // Verifico che non siano le entries di default delle directories..
                 if (strcmp(dirent2->d_name, ".") != 0 && strcmp(dirent2->d_name, "..") != 0) {
@@ -225,17 +228,22 @@ int are_equals_directories(char * path1, char * path2) {
                         if (is_dir1 && is_dir2) {
 
                             // Procedo in maniera ricorsiva sulle sub-directory aventi lo stesso nome in entrambi i path..
-                            equal_dir = equal_dir && are_equals_directories(completePath1, completePath2);
+                            equal_dir = equal_dir || are_equals_directories(completePath1, completePath2);
+                        }
+                        else {
+                            equal_dir = equal_dir || are_equals(completePath1, completePath2);
                         }
                         free(completePath2);
                     }
-                    else { equal_dir = 0; }
                 }
             }
+
+            if( equal_dir == 0 ) { return equal_dir; }
 
             free(completePath1);
             closedir(dir2);
         }
+        else { equal_dir = 1; }
     }
     closedir(dir1);
     return equal_dir;
@@ -292,19 +300,24 @@ int are_equals(char * file_path1, char * file_path2) {
         fclose(file1->file);
         fclose(file2->file);
 
+         if(ris != 0) {
+            printIndented("I files sono diversi!", 1);
+        } else {
+            printIndented("I files sono uguali!", 1);
+        }
+
         // Ritorna il risultato del confronto: 0 se i files sono identici.
         return ris;
     }
 }
 
-int dirwalk(char * path1, char * path2, int indent_limit, char symb)
+void dirwalk(char * path1, char * path2, int indent_limit, char symb)
 {
     struct dirent *dirent1, *dirent2;
     DIR *dir1, *dir2;
     struct stat stat1, stat2;
     int is_dir1, is_dir2;
 
-    int something_diff = 0;     // flag che indica quando due cartelle sono differenti o uguali.
     int indent_tab = 0;         // serve per dare una giusta indentazione al momento della stampa in console.
     int found = 0;              // serve per vedere se il file1 è stato trovato all'interno del path2.
 
@@ -405,7 +418,6 @@ int dirwalk(char * path1, char * path2, int indent_limit, char symb)
                             free(completePath2);    
                         }
                     }
-                    else { something_diff = 1; }
                 }
             }
 
@@ -418,7 +430,6 @@ int dirwalk(char * path1, char * path2, int indent_limit, char symb)
             free(completePath1);
             closedir(dir2);
         }
-        return something_diff;
     }
 
     // Chiude il directory stream.
@@ -527,6 +538,7 @@ int main (int argc, char **argv) {
         else {
             printf("diverse\n");
         }
+
         printf("\n--------------------------------------------------------------------------------------------------\n");
     }
     else if(!is_dir_1 && !is_dir_2) {
