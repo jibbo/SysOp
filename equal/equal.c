@@ -78,73 +78,79 @@ void diffBetweenFiles(char * path1, char * path2, int indent_limit) {
         exit(EXIT_FAILURE);
     }
 
-    /*
-    printf("file1->path: %s\n", file1->path);
-    printf("file1->size: %d bytes\n", file1->size);
-    printf("file2->path: %s\n", file2->path);
-    printf("file2->size: %d bytes\n", file2->size);
-    printf("\n-----------------------------------");
-    */
+    // Obtain file1 dimension in bytes
+    fseek(file1->file, 0, SEEK_END);
+    file1->size = ftell(file1->file);
+    file1->line = (char *) malloc(file1->size);
+    fseek(file1->file, 0, SEEK_SET);  // Return to the top of the file
+    
+    // Obtain file2 dimension in bytes
+    fseek(file2->file, 0, SEEK_END);
+    file2->size = ftell(file2->file);
+    file2->line = (char *) malloc(file2->size);
+    fseek(file2->file, 0, SEEK_SET);  // Return to the top of the file
 
-        char buffer[128];
+    /* legge e stampa ogni riga */
+    char buf_file1[file1->size];
+    char buf_file2[file2->size];
 
-        // Obtain file1 dimension in bytes
-        fseek(file1->file, 0, SEEK_END);
-        file1->size = ftell(file1->file);
-        file1->line = (char *) malloc(file1->size);
-        fseek(file1->file, 0, SEEK_SET);  // Return to the top of the file
-        //file1->read = fread(file1->line, file1->size, 1, file1->file);
-        //printf("\nfile1:\n%s\n----------------------------\n\n\nora bello\n\n", file1->line);
+    //long int current_seek1 = 0;
+    long int current_seek2 = 0;
+    long int prec_seek2 = 0;
 
+    printf("size1%d\n", file1->size);
+    printf("size2%d\n", file2->size);
 
-        // Obtain file2 dimension in bytes
-        fseek(file2->file, 0, SEEK_END);
-        file2->size = ftell(file2->file);
-        file2->line = (char *) malloc(file2->size);
-        fseek(file2->file, 0, SEEK_SET);  // Return to the top of the file
+    // Leggo una riga dal primo file..
+    while(fgets(buf_file1, file1->size, file1->file) != NULL && current_seek2 != file2->size) {
 
+        // Ottengo la posizione corrente che sto analizzando nel primo file..
+        //current_seek1 = ftell(file1->file);
 
-        int  count, total = 0;
-        /* Cycle until end of file reached: */
-        while( !feof( file1->file ) )
-        {
-            /* Attempt to read in 10 bytes: */
-            //buffer, sizeof( char ), 100, stream
-            count = fread(buffer, sizeof(char), 128, file1->file);
-            if( ferror( file1->file ) ) {
-                perror( "Read error" );
-                printf("errorr\n");
-                break;
-            }
-            else {
-                printf("%s\n", buffer);
-            }
+        prec_seek2 = current_seek2;
 
-            /* Total up actual bytes read */
-            total += count;
+        //printf("file 1 leggo %s\n", buf_file1);
+
+        //fseek(file2->file, 0, SEEK_SET);  // Return to the top of the file
+        while(fgets(buf_file2, file2->size, file2->file) != NULL && strcmp(buf_file1, buf_file2) != 0) {
+            // printf("file 2 leggo %s\n", buf_file2);
+            // Do nothing
         }
-        printf( "Number of bytes read = %d\n", total );
-        printf( "Number of bytes del file = %d\n\n\n", file1->size );
 
-        total = 0;
-        /* Cycle until end of file reached: */
-        while( !feof( file2->file ) )
-        {
-            /* Attempt to read in 10 bytes: */
-            //buffer, sizeof( char ), 100, stream
-            count = fread(buffer, sizeof(char), 128, file2->file);
-            if( ferror( file2->file ) ) {
-                perror( "Read error" );
-                break;
-            }
-            else  {
-                printf("%s\n", buffer);
-            }
+        // Ottengo la posizione corrente che sto analizzando nel secondo file..
+        current_seek2 = ftell(file2->file);
 
-            /* Total up actual bytes read */
-            total += count;
+        // REMOVE after test..
+        /*
+        if(strcmp(buf_file1, buf_file2) != 0) {
+            printf("uguali %ssono a %li in file1 e %li in file2", buf_file1, ftell(file1->file), current_seek2);
         }
-        printf( "Number of bytes read = %d\n", total );
+        */
+       
+        // Se ho raggiunto la fine del secondo file..
+        if (current_seek2 == file2->size) {
+            //printf("fine\n");
+            printf("+ %s", buf_file1);
+        }
+        else {
+
+            fseek(file2->file, prec_seek2, SEEK_SET);
+            while(fgets(buf_file2, file2->size, file2->file) != NULL && ftell(file2->file) != current_seek2) {
+                printf("- %s", buf_file2);
+            }
+        }
+    }
+
+    // Se sono arrivato alla fine del secondo file..
+    // Leggo tutto il file 1 dalla pos corrente fino alla fine aggiungendo un +
+    while(fgets(buf_file1, file1->size, file1->file) != NULL) {
+        printf("+ %s", buf_file1);
+    }
+
+    //file1->read = fread(file1->line, file1->size, 1, file1->file);
+    //printf("\nfile1:\n%s\n----------------------------\n\n\nora bello\n\n", file1->line);
+
+
 
     /*
 
@@ -600,3 +606,5 @@ int main (int argc, char **argv) {
     syslog(LOG_INFO, "Exit success. Terminated.");
     exit(EXIT_SUCCESS);
 }
+
+// ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
