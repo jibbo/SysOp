@@ -12,17 +12,26 @@
 #include <syslog.h>
 
 typedef struct {
-    char * path;
-    FILE * file;
-    char * line;
-    size_t size;
-    ssize_t read;
+  char* path;
+  FILE* file;
+  char* line;
+  size_t size;
+  ssize_t read;
 } file;
+
+typedef struct {
+  char* path;
+  FILE* file;
+  size_t size;
+} archive;
+
+file* backup;
 
 void scanworkingdir(char*, int);
 void printhelp();
-void showparametererror(int optvalue, int flag, int parameter);
-void createarchive(char* filename);
+void showparametererror(int optvalue, int flag, int parameter, int optindexvalue);
+void createarchive(char* filename, char* directory);
+void fillarchive(char* directory);
 bool filealredyexists(const char*);
 
 int main(int argc, char **argv) {
@@ -31,7 +40,9 @@ int main(int argc, char **argv) {
   int t_flag = 0;
   int f_flag = 0;
 
+  char *filevalue = NULL;
   char *dirvalue = NULL;
+
   int index;
   int c;
      
@@ -42,23 +53,23 @@ int main(int argc, char **argv) {
       case 'f':
         f_flag = 1;
         dirvalue = optarg;
-        //printf("Creating an archive from the directory: %s\n", dirvalue);
-        scanworkingdir(dirvalue, 2);
+        scanworkingdir(argv[optind], 2);
+        createarchive(dirvalue, argv[optind]);
         break;
 
       case 'c':
-        c_flag = 1;    
-        showparametererror(optopt, f_flag, c);
+        c_flag = 1;
+        showparametererror(optopt, f_flag, c, optind);
         break;
 
       case 'x':
         x_flag = 1;
-        showparametererror(optopt, f_flag, c);
+        showparametererror(optopt, f_flag, c, optind);
         break;
 
       case 't':
         t_flag = 1;
-        showparametererror(optopt, f_flag, c);
+        showparametererror(optopt, f_flag, c, optind);
         break;
 
       case '?':
@@ -80,19 +91,15 @@ int main(int argc, char **argv) {
 }
 
 void printhelp() {
-  printf("Usage: \n");
+  printf("Usage: mkbkp [-c] [-x] [-t] [-f]\n");
   printf("\t -f to create or extract an archive");
   printf("\n\t -c to create a new archive");
   printf("\n\t -x to extract an archive in the current directory");
   printf("\n\t -t to display the content of an archive\n");
 }
 
-void showparametererror(int optvalue, int flag, int parameter) {
-  printf("optvalue: %c\n", optvalue);
-  printf("flag: %i\n", flag);
-  printf("parameter: %c\n", parameter);
-
-  if(optvalue = 'f' && !flag) {
+void showparametererror(int optvalue, int flag, int parameter, int optindexvalue) {
+  if(optvalue = 'f' && !flag && optindexvalue == 2 ) {
     if(parameter == 'c') {
       printf("You must use the -f flag to specify the archive you want to create\n");
     } else if(parameter == 'x') {
@@ -103,8 +110,16 @@ void showparametererror(int optvalue, int flag, int parameter) {
   }
 }
 
-void createarchive(char* filename) {
+void createarchive(char* filename, char* directory) {
+  if(filealredyexists(filename)) {
+    printf("Sorry, a file named '%s' already exists; use another one\n", filename);
+  } else {
+    FILE *archive2 = fopen(filename, "w");
+  }
+}
 
+void fillarchive(char* directory) {
+  //
 }
 
 bool filealredyexists(const char* filename) {
