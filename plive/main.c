@@ -43,7 +43,7 @@ typedef struct mini_process_t
     int pid;
     char* name;
     int ppid;
-    float time;
+    unsigned long cpu;
 }MINI_PROC;
 
 
@@ -66,8 +66,8 @@ void stmpProc(MINI_PROC *proc)
     for(i=0; i<n; i++)
     {
         //printf("%d\t%s\n",proc[i].pid,proc[i].name);
-        printw("pid: %d  \tppid: %d  \tname: %s top \ttime:%u\n",proc[i].pid,proc[i].ppid,
-            proc[i].name,proc[i].time );
+        printw("pid: %d  \tppid: %d  \tname: %s  \tcpu:%lu\n",proc[i].pid,proc[i].ppid,
+            proc[i].name,proc[i].cpu);
     }
     refresh();
 }
@@ -110,7 +110,7 @@ void *updateVariables()
 {
     while(true)
     {
-        char c=getch();
+        char c = getch();
         if(c>='0' && c<='9')
             seconds=atoi(&c);
         else if(c=='q'){
@@ -169,7 +169,8 @@ int listOfProcess(PROC *proc,int len)
                 int j=0;
                 for(j=1;j<strlen(name)-1; j++)
                     proc[i].name[j-1]=name[j];
-                proc[i].name[j-1]='\0'; 
+                proc[i].name[j-1]='\0';
+                close(f);
             }
         }
         else i--; //this is to avoid useless folder.
@@ -177,34 +178,105 @@ int listOfProcess(PROC *proc,int len)
     closedir(d);
 }
 
+void getTotalTime(unsigned long *out){
+   FILE *f= fopen("/proc/stat","r"); 
+   if(f)
+   {
+        int user=0,nice=0,sys=0;
+        char cpu[10];
+        fscanf(f,"%s %d %d %d",cpu,&user,&nice,&sys);
+        //*out=user+nice+sys;
+        out=sys;
+        close(f);
+   }
+}
+
 int cmpfunc (const void * a, const void * b)
 {
-   return ( *(float*)a - *(float*)b );
+    return ((*(MINI_PROC*)a).cpu - (*(MINI_PROC*)b).cpu);
 }
-void topTimes(PROC* before,PROC* after, MINI_PROC* out,int len)
+void *topTimes(PROC* before,PROC* after, MINI_PROC* out,int len,int len2,
+    unsigned long *timeTotalBefore,unsigned long *timeTotalAfter)
 {
     MINI_PROC tmp[len];
     int i=0;
+    int j=0;
     for(i=0;i<len;i++)
     {
-        tmp[i].pid=after[i].pid;
-        tmp[i].ppid=after[i].ppid;
-        tmp[i].name=after[i].name;
-        tmp[i].time=((after[i].stime+after[i].utime)-(before[i].stime+before[i].utime))/100;
+        bool end=false;
+        while(before[i].pid!=after[j].pid && !end)
+        {
+            if(j>=len2-1)
+                end=true;
+            j++;
+        }
+        if(end)
+            continue;
+        tmp[i].pid=after[j].pid;
+        tmp[i].ppid=after[j].ppid;
+        tmp[i].name=after[j].name;
+        /*if(after[j].status=='S')
+            tmp[i].cpu=0;
+        else*/
+            // tmp[i].cpu=100.0*(((after[j].stime+after[j].utime)-
+            //     (before[i].stime+before[i].utime))/
+            //     (*timeTotalAfter-*timeTotalBefore));
+            tmp[i].cpu=100.0*(after[j].stime-before[i].stime)/ (timeTotalAfter-timeTotalBefore);
+        j=0;
     }
     qsort(tmp, len, sizeof(MINI_PROC), cmpfunc);
-    for(i=len-1;i>0;i--)
+    j=0;
+    for(i=n-1;i>=0;i--)
     {
-        out[i]=tmp[i];
+        out[j].pid=tmp[i].pid;
+        out[j].ppid=tmp[i].ppid;
+        out[j].name=tmp[i].name;
+        j++;
     }
 }
+/*
 
-void copyProc(PROC* old,PROC* last,int len)
+int pid;
+    char name[256];
+    char status;
+    int ppid;
+    int pgrp;
+    int session;
+    int tty;
+    int tpgid;
+    unsigned flags;
+    unsigned long minfaults;
+    unsigned long majfaults;
+    unsigned long utime;
+    unsigned long stime;
+    unsigned long ctime;
+    */
+void copyProc(PROC* old,PROC* last,int len,int len2)
 {
     int i=0;
+    int j=0;
     for(i=0;i<len;i++)
     {
-        old[i]=last[i];
+        bool end=false;
+        while(old[i].pid!=last[j].pid && !end)
+        {
+            if(j>=len2-1)
+                end=true;
+            j++;
+        }
+        if(end)
+            continue;
+        old[i].pid=last[j].pid;
+        old[i].status=last[j].status;
+        old[i].ppid=last[j].ppid;
+        old[i].session=last[j].session;
+        old[i].tty=last[j].tty;
+        old[i].tpgid=last[j].tpgid;
+        old[i].flags=last[j].flags;
+        old[i].minfaults=last[j].majfaults;
+        old[i].utime=last[j].utime;
+        old[i].stime=last[j].stime;
+        old[i].ctime=last[j].ctime;
     }
 }
 
@@ -220,17 +292,24 @@ int main(int argc, char **argv)
          unsigned long oldTimes[np];
          initscr();
          pthread_create(&look, NULL, updateVariables, NULL);
+         unsigned long timeTotalBefore=0;
+         getTotalTime(&timeTotalBefore);
          while(1)
          {
             sleep(seconds);
-            PROC proc[np];
-            listOfProcess(proc,np);
+            int nnp=numberOfProcess();
+            PROC proc[nnp];
+            listOfProcess(proc,nnp);
             MINI_PROC out[n];
-            topTimes(old_proc,proc,out,np);
-            copyProc(old_proc,proc,np);
+            unsigned long timeTotalAfter=0;
+            getTotalTime(&timeTotalAfter);
+            topTimes(old_proc,proc,out,np,nnp,&timeTotalBefore,&timeTotalAfter);
             clear();
             stmpProc(out);
-            printw("\n\n");
+            copyProc(old_proc,proc,np,nnp);
+            // printw("TotalTime spent: %d\n",timeTotalAfter-timeTotalBefore);
+            // refresh();
+            timeTotalBefore=timeTotalAfter;
         }
         endwin();
     }
