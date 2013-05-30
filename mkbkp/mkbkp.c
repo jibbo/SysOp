@@ -10,6 +10,9 @@
 #include <fcntl.h>
 #include <syslog.h>
 
+#define MKBKP_FILE_DELIMITER "MKBKP_FILE-DELIMITER"
+#define MKBKP_DIR_DELIMITER "MKBKP_DIR-DELIMITER"
+
 typedef struct {
   char path[256];
   FILE* file;
@@ -23,6 +26,7 @@ FILE* backup;
 char filevalue[256];
 char dirvalue[256];
 char cwd[256];
+char subpath[256];
 
 int f_flag = 0;
 int c_flag = 0;
@@ -31,22 +35,19 @@ int t_flag = 0;
 
 void makeBackup(char* path);
 void printHelp();
-void createArchive(char* filename, char* directory);
-int fileAlreadyExists(const char*);
 void manage();
 
 int main(int argc, char **argv) {
 
   int c;
-     
   opterr = 0;
   
   while ((c = getopt (argc, argv, "f:cxt")) != -1) {
     switch (c) {
       case 'f':
         f_flag = 1;
-        strcpy(dirvalue, optarg);
-        strcpy(filevalue, argv[optind]);
+        strcpy(filevalue, optarg);
+        strcpy(dirvalue, argv[optind]);
         break;
       case 'c':
         c_flag = 1;
@@ -85,7 +86,7 @@ void manage() {
   } else if((c_flag == 1 && f_flag == 1) && (filevalue != NULL && dirvalue != NULL)) {
     // Crea l'archivio
     printf("Creo l'archivio chiamato: %s della cartella: %s\n", filevalue, dirvalue);
-    // createArchive(filevalue, dirvalue);
+    makeBackup(dirvalue);
   } else if(x_flag == 1 && (filevalue == NULL && dirvalue == NULL)) {
     printf("You must use the -f flag to specify the archive you want to extract\n");
 
@@ -110,27 +111,6 @@ void printHelp() {
   printf("\n\t -t to display the content of an archive\n");
 }
 
-void createArchive(char* filename, char* directory) {
-  if(fileAlreadyExists(filename)) {
-    printf("Sorry, a file named '%s' already exists; use another one\n", filename);
-  } else {
-    if(creat(filename, 0666) == -1) {
-      printf("There was an error while creating the file %s\n", filename);
-    } else {
-      printf("File created correctly\n");
-    }
-  }
-}
-
-int fileAlreadyExists(const char* filename) {
-  FILE* file = fopen(filename, "r");
-  if(file) {
-    fclose(file);
-    return 1;
-  }
-  return 0;
-}
-
 void makeBackup(char* path) {
   struct dirent* direntry;
   DIR* dir;
@@ -139,9 +119,7 @@ void makeBackup(char* path) {
   int access_err;
 
   FILE *openedfile;
-
   char* buffer = NULL;
-
   int flength = 0;
 
   // La funzione opendir apre un directory stream.
@@ -150,25 +128,6 @@ void makeBackup(char* path) {
   if ((dir = opendir(path)) == NULL) { 
       printf("scanworkingdir: can't open %s\n", path);
       return;
-  }
-
-  // Legge la cartella corrente
-  getcwd(cwd, 256);
-
-  printf("%s\n", cwd);
-  strcat(cwd, filevalue);
-  printf("%s\n", cwd);
-
-  // Apro il file di backup in Append
-  if(fileAlreadyExists(filevalue) == 0) {
-    backup = fopen(cwd, "a+");
-    if(backup == NULL) {
-      perror(cwd);
-      exit(EXIT_FAILURE);
-    }
-  } else {
-    perror("Sorry, a file with this name already exists");
-    exit(EXIT_FAILURE);
   }
 
   // La funzione readdir legge la voce corrente nella directory, posizionandosi sulla voce successiva.
@@ -184,23 +143,46 @@ void makeBackup(char* path) {
     snprintf(concat, length, "%s/%s", path, direntry -> d_name);
     stat(concat, &stbuf);
 
+    // Legge la cartella corrente
+    getcwd(cwd, 256);
+    strcat(cwd, "/");
+    strcat(cwd, filevalue);
+
+    // Apro il file di backup in Append
+    backup = fopen(cwd, "a+");
+    if(backup == NULL) {
+      perror(cwd);
+      exit(EXIT_FAILURE);
+    }
+
     // Bool che indica se è una directory
     is_dir = ((stbuf.st_mode & S_IFMT) == S_IFDIR);
 
     // se è una directory
     if (is_dir) {
-      printf ("%s/\n" , direntry -> d_name);
+      // printf ("%s/\n" , direntry -> d_name);
 
-      makeBackup(direntry -> d_name);
+      strcpy(subpath, path);
+      strcat(subpath, "/");
+      strcat(subpath, direntry -> d_name);
+
+      printf("\t- %s\n", subpath);
+
+      fprintf(backup, "%s\n", MKBKP_DIR_DELIMITER);
+      fprintf(backup, "%s\n", subpath);
+      fprintf(backup, "%s\n", MKBKP_DIR_DELIMITER);
+
+      makeBackup(subpath);
     } else {
       // allora è un file
-      printf ("%s\n" , direntry -> d_name);
-
       str_file* temp;
 
-      temp = malloc(sizeof(str_file));
-      strcpy(temp -> path, dirvalue);
+      temp = (str_file* ) malloc(sizeof(str_file));
+      strcpy(temp -> path, path);
+      strcat(temp -> path, "/");
       strcat(temp -> path, direntry -> d_name);
+
+      printf("%s\n", temp -> path);
 
       temp -> file = fopen(temp -> path, "rb");
       if(temp -> file == NULL) {
@@ -211,16 +193,25 @@ void makeBackup(char* path) {
       fseek(temp -> file, 0, SEEK_END);
       temp -> size = ftell(temp -> file);
       fseek(temp -> file, 0, SEEK_SET);
+
+      temp -> line = (char* ) malloc(temp -> size);
+
       temp -> read = fread(temp -> line, temp -> size, 1, temp -> file);
 
-      //Scrive il delimitatore del file all'interno dell'archivio
-      fprintf(backup, "%s\n", cwd);
+      // Scrive il delimitatore del file all'interno dell'archivio
+      fprintf(backup, "%s\n", MKBKP_FILE_DELIMITER);
+      fprintf(backup, "%s\n", temp -> path);
+      fprintf(backup, "%s\n", MKBKP_FILE_DELIMITER);
+
       // Scrive il file appena letto all'interno dell'archivio
-      fwrite(temp->line, temp-> size, 1, backup);
+      fwrite(temp->line, 1, temp -> size, backup);
       fclose(temp -> file);
+
+      free(temp -> line);
+      free(temp);
     }
 
-    free(concat);
+    fclose(backup);
   }
 
   // Chiude il directory stream.
