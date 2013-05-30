@@ -107,9 +107,9 @@ void diffBetweenFiles(char * path1, char * path2, int indent_limit) {
             if(strcmp(buf_file1, buf_file2) != 0) {
 
                 for(indent_tab = 0; indent_tab < indent_limit + 1; indent_tab++) { printf("  "); }
-                printf("+ %s\n", buf_file1);
+                printf("+ %s", buf_file1);
                 for(indent_tab = 0; indent_tab < indent_limit + 1; indent_tab++) { printf("  "); }
-                printf("- %s\n", buf_file2);
+                printf("- %s", buf_file2);
 
                 //printf("Differences in %s - %s", buf_file1, buf_file2);
             }
@@ -119,7 +119,7 @@ void diffBetweenFiles(char * path1, char * path2, int indent_limit) {
         // Stampo la differenza solo di uno rispetto all'altro..
         while(fgets(buf_file1, 128, file1->file) != NULL) {
             for(indent_tab = 0; indent_tab < indent_limit + 1; indent_tab++) { printf("  "); }
-            printf("+ %s\n", buf_file1);
+            printf("+ %s", buf_file1);
         }
 
         if(feof(file1->file))
@@ -133,7 +133,7 @@ void diffBetweenFiles(char * path1, char * path2, int indent_limit) {
 
         while(fgets(buf_file2, 128, file2->file) != NULL) {
             for(indent_tab = 0; indent_tab < indent_limit + 1; indent_tab++) { printf("  "); }
-            printf("- %s\n", buf_file2);
+            printf("- %s", buf_file2);
         }
 
         if(feof(file2->file))
@@ -529,19 +529,19 @@ void dirwalk(char * path1, char * path2, int indent_limit, char symb)
             //size_t length1 = strlen(path1) + strlen(dirent1->d_name) + 1;
             //char * completePath1 = (char *) malloc(sizeof(char) * length1;
             strcpy(completePath1, path1);
-            strcat(completePath1, dirent1->d_name);            
+            strcat(completePath1, dirent1->d_name);
+
             // Se si tratta di una directory aggiungo uno / tra il path e il nome della cartella
             // if ( is_dir1 ) { snprintf(completePath1, length1 + , "%s%s/", path1, dirent1->d_name); }
             // else { snprintf(completePath1, length1, "%s%s", path1, dirent1->d_name); }
 
             //snprintf(completePath1, length1, "%s%s", path1, dirent1->d_name);
 
-            /*
             printf("path1: %s\n", path1);
             printf("d_name: %s\n", dirent1->d_name);
             printf("def: %s%s\n", path1, dirent1->d_name);
             printf("\n");
-            */
+
             //printf("analizzando %s\n\n", dirent1->d_name);
 
             // Setto il flag a zero per capire che finora non c'è alcun file uguale..
@@ -589,12 +589,11 @@ void dirwalk(char * path1, char * path2, int indent_limit, char symb)
                         // Sto visualizzando il file percorsi la prima volta..
                         if(symb == '+') {
 
-                            /*
                             printf("path2: %s\n", path2);
                             printf("d_name2: %s\n", dirent2->d_name);
                             printf("def2: %s%s\n", path2, dirent2->d_name);
                             printf("\n");
-                            */
+                            
 
                             stat(completePath2, &stat2);
                             is_dir2 = ((stat2.st_mode & S_IFMT) == S_IFDIR);
@@ -699,12 +698,12 @@ int main (int argc, char **argv) {
     int access_err1 = (stat(argv[1], &stbuf1) == -1);
     int access_err2 = (stat(argv[2], &stbuf2) == -1);
     if ( access_err1 ) {
-        fprintf(stderr, "Error: can't access %s\n", argv[1]);
+        printf("Error: can't access %s\n", argv[1]);
         syslog(LOG_ERR, "Error: can't access %s", argv[1]);
         exit(EXIT_FAILURE);
     }
     if ( access_err2) {
-        fprintf(stderr, "Error: can't access %s\n", argv[2]);
+        printf("Error: can't access %s\n", argv[2]);
         syslog(LOG_ERR, "Error: can't access %s", argv[2]);
         exit(EXIT_FAILURE);
     }
@@ -739,5 +738,6 @@ int main (int argc, char **argv) {
 
     // Termino con successo..
     syslog(LOG_INFO, "Exit success. Terminated.");
+    printf("\n");
     exit(EXIT_SUCCESS);
 }
