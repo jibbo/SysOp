@@ -43,7 +43,7 @@ typedef struct mini_process_t
     int pid;
     char* name;
     int ppid;
-    float time;
+    float cpu;
 }MINI_PROC;
 
 
@@ -66,8 +66,8 @@ void stmpProc(MINI_PROC *proc)
     for(i=0; i<n; i++)
     {
         //printf("%d\t%s\n",proc[i].pid,proc[i].name);
-        printw("pid: %d  \tppid: %d  \tname: %s top \ttime:%u\n",proc[i].pid,proc[i].ppid,
-            proc[i].name,proc[i].time );
+        printw("pid: %d  \tppid: %d  \tname: %s  \tcpu:%f\n",proc[i].pid,proc[i].ppid,
+            proc[i].name,proc[i].cpu);
     }
     refresh();
 }
@@ -110,7 +110,7 @@ void *updateVariables()
 {
     while(true)
     {
-        char c=getch();
+        char c = getch();
         if(c>='0' && c<='9')
             seconds=atoi(&c);
         else if(c=='q'){
@@ -147,8 +147,7 @@ int listOfProcess(PROC *proc,int len)
     FILE *f;
     struct dirent *dir;
     int nt=0;
-    for(i=0; i<len; i++)
-    {
+    while((dir=readdir(d))!=NULL){
         dir= readdir(d);
         char path[300];
         strcpy(path,"/proc/");
@@ -169,68 +168,145 @@ int listOfProcess(PROC *proc,int len)
                 int j=0;
                 for(j=1;j<strlen(name)-1; j++)
                     proc[i].name[j-1]=name[j];
-                proc[i].name[j-1]='\0'; 
+                proc[i].name[j-1]='\0';
+                close(f);
             }
         }
-        else i--; //this is to avoid useless folder.
-    }   
+    }  
     closedir(d);
 }
 
+//ritorna per quanto tempo e' stata utilizzata la cpu
+float getTotalTime(){
+   FILE *f= fopen("/proc/stat","r"); 
+   float out=0;
+   if(f)
+   {
+        float user=0,nice=0,sys=0;
+        char cpu[10];
+        fscanf(f,"%s %f %f %f",cpu,&user,&nice,&sys);
+        //*out=user+nice+sys;
+        out=user+sys;
+        close(f);
+   }
+   return out;
+}
+
+//funzione per confrontare due 
+//processi in base al pid
+int cmpPID (const void * a, const void * b)
+{
+    return ((*(PROC*)a).pid - (*(PROC*)b).pid);
+}
+
+//funzione per confrontare due 
+//mini processi in base alla cpu utilizzata
 int cmpfunc (const void * a, const void * b)
 {
-   return ( *(float*)a - *(float*)b );
+    return ((*(MINI_PROC*)a).cpu - (*(MINI_PROC*)b).cpu);
 }
-void topTimes(PROC* before,PROC* after, MINI_PROC* out,int len)
+
+//funzione principale
+void *topTimes(PROC* before,PROC* after, MINI_PROC* out,int len,int len2,
+    float timeTotalBefore,float timeTotalAfter)
 {
-    MINI_PROC tmp[len];
+    MINI_PROC tmp[len2];
     int i=0;
-    for(i=0;i<len;i++)
+    int j=0;
+    for(i=0;i<len2;i++)
     {
         tmp[i].pid=after[i].pid;
         tmp[i].ppid=after[i].ppid;
         tmp[i].name=after[i].name;
-        tmp[i].time=((after[i].stime+after[i].utime)-(before[i].stime+before[i].utime))/100;
+        
+        //calcolo la cpu utilizzata da ogni processo
+        if(i<len && after[i].pid==before[i].pid)
+          tmp[i].cpu=100*((after[i].stime+after[i].utime)-(before[i].utime+before[i].stime))/ (timeTotalAfter-timeTotalBefore);
+         else
+          tmp[i].cpu=100* (after[i].stime+after[i].utime) / timeTotalAfter;
     }
+    //ordino l'array per utilizzo di cpu in modo crescente
     qsort(tmp, len, sizeof(MINI_PROC), cmpfunc);
-    for(i=len-1;i>0;i--)
+    
+    //prendo i primi n processi
+    //partendo dal fondo
+    j=0;
+    for(i=n-1;i>=0;i--)
     {
-        out[i]=tmp[i];
+        out[j].pid=tmp[i].pid;
+        out[j].ppid=tmp[i].ppid;
+        out[j].name=tmp[i].name;
+        j++;
     }
 }
 
-void copyProc(PROC* old,PROC* last,int len)
+//elimina il contenuto di old
+//e copia tutto il contenuto di last
+//in old
+void copyProc(PROC* old,PROC* last,int len2)
 {
+    free(old);
+    old = (PROC *) malloc(sizeof(PROC)*len2);
     int i=0;
-    for(i=0;i<len;i++)
+    int j=0;
+    for(i=0;i<len2;i++)
     {
-        old[i]=last[i];
+        old[i].pid=last[i].pid;
+        old[i].status=last[i].status;
+        old[i].ppid=last[i].ppid;
+        old[i].session=last[i].session;
+        old[i].tty=last[i].tty;
+        old[i].tpgid=last[i].tpgid;
+        old[i].flags=last[i].flags;
+        old[i].minfaults=last[i].majfaults;
+        old[i].utime=last[i].utime;
+        old[i].stime=last[i].stime;
+        old[i].ctime=last[i].ctime;
     }
+    free(last);
 }
 
 int main(int argc, char **argv) 
 {
     if(checkflag(argc,argv)!=-1) 
     {
+          
+         //operazioni da fare per avere
+         //tutti i dati da processare
          int np=numberOfProcess();
-         pthread_t look;
-         PROC old_proc[np];
+        
+         PROC * old_proc = (PROC *) malloc(sizeof(PROC)*np);
          listOfProcess(old_proc,np);
-         //stmpOfArray(proc,np);
-         unsigned long oldTimes[np];
+         float timeTotalBefore= getTotalTime();
+         qsort(old_proc, np, sizeof(PROC), cmpPID);
+        
          initscr();
+         
+          //creo il thread che aspetta 
+         //l'input dell'utente
+         pthread_t look;
          pthread_create(&look, NULL, updateVariables, NULL);
+         
          while(1)
          {
             sleep(seconds);
-            PROC proc[np];
-            listOfProcess(proc,np);
+            
+            //leggo i nuovi dati
+            int nnp=numberOfProcess();
+            PROC* proc = (PROC *) malloc(sizeof(PROC)*nnp);
+            listOfProcess(proc,nnp);
+            qsort(proc, nnp, sizeof(PROC), cmpPID);
             MINI_PROC out[n];
-            topTimes(old_proc,proc,out,np);
-            copyProc(old_proc,proc,np);
+            float timeTotalAfter=getTotalTime();
+            topTimes(old_proc,proc,out,np,nnp,timeTotalBefore,timeTotalAfter);
+            
+            //pulisco e stampo a video
             clear();
             stmpProc(out);
-            printw("\n\n");
+     
+            copyProc(old_proc,proc,nnp);
+            np=nnp;
+            timeTotalBefore=timeTotalAfter;
         }
         endwin();
     }
