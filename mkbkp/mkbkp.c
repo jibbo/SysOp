@@ -12,9 +12,10 @@
 
 #define MKBKP_FILE_DELIMITER "MKBKP_FILE-DELIMITER"
 #define MKBKP_DIR_DELIMITER "MKBKP_DIR-DELIMITER"
+#define PATH_MAX_LENGTH 256
 
 typedef struct {
-  char path[256];
+  char path[PATH_MAX_LENGTH];
   FILE* file;
   char* line;
   size_t size;
@@ -23,22 +24,22 @@ typedef struct {
 
 FILE* backup;
 
-char filevalue[256];
-char dirvalue[256];
-char cwd[256];
-char subpath[256];
+char filevalue[PATH_MAX_LENGTH];
+char dirvalue[PATH_MAX_LENGTH];
+char cwd[PATH_MAX_LENGTH];
+char subpath[PATH_MAX_LENGTH];
 
 int f_flag = 0;
 int c_flag = 0;
 int x_flag = 0;
 int t_flag = 0;
 
-void makeBackup(char* path);
-void printHelp();
 void manage();
+void printHelp();
+void makeBackup(char* path);
+void showBackupContent(char* archive);
 
 int main(int argc, char **argv) {
-
   int c;
   opterr = 0;
   
@@ -47,7 +48,7 @@ int main(int argc, char **argv) {
       case 'f':
         f_flag = 1;
         strcpy(filevalue, optarg);
-        strcpy(dirvalue, argv[optind]);
+        //strcpy(dirvalue, argv[optind]); 
         break;
       case 'c':
         c_flag = 1;
@@ -60,12 +61,12 @@ int main(int argc, char **argv) {
         break;
       case '?':
         if (optopt == 'f') {
-          fprintf (stderr, "Option -%c requires the archive as an argument\n", optopt);
+          fprintf(stderr, "Option -%c requires the archive as an argument\n", optopt);
         } else if (isprint (optopt)) {
-          fprintf (stderr, "Unknown option '-%c'\n", optopt);
+          fprintf(stderr, "Unknown option '-%c'\n", optopt);
           printHelp();
         } else {
-          fprintf (stderr, "Unknown option character '\\x%x'.\n", optopt);
+          fprintf(stderr, "Unknown option character '\\x%x'.\n", optopt);
         }
         return 1;
 
@@ -97,9 +98,9 @@ void manage() {
   } else if(t_flag == 1 && (filevalue == NULL && dirvalue == NULL)) {
     printf("You must use the -f flag to specify the archive you want to analyze\n");
 
-  } else if ((t_flag == 1 && f_flag == 1) && (filevalue != NULL && dirvalue != NULL)) {
+  } else if ((t_flag == 1 && f_flag == 1) && filevalue != NULL) {
     // Mostra il contenuto dell'archivio
-    printf("Mostro il contenuto dell'archivio: %s\n", filevalue);
+    showBackupContent(filevalue);
   }
 }
 
@@ -144,7 +145,7 @@ void makeBackup(char* path) {
     stat(concat, &stbuf);
 
     // Legge la cartella corrente
-    getcwd(cwd, 256);
+    getcwd(cwd, PATH_MAX_LENGTH);
     strcat(cwd, "/");
     strcat(cwd, filevalue);
 
@@ -168,9 +169,9 @@ void makeBackup(char* path) {
 
       printf("\t- %s\n", subpath);
 
-      fprintf(backup, "%s\n", MKBKP_DIR_DELIMITER);
-      fprintf(backup, "%s\n", subpath);
-      fprintf(backup, "%s\n", MKBKP_DIR_DELIMITER);
+      fprintf(backup, "%s", MKBKP_DIR_DELIMITER);
+      fprintf(backup, "%s", subpath);
+      fprintf(backup, "%s", MKBKP_DIR_DELIMITER);
 
       makeBackup(subpath);
     } else {
@@ -199,9 +200,9 @@ void makeBackup(char* path) {
       temp -> read = fread(temp -> line, temp -> size, 1, temp -> file);
 
       // Scrive il delimitatore del file all'interno dell'archivio
-      fprintf(backup, "%s\n", MKBKP_FILE_DELIMITER);
-      fprintf(backup, "%s\n", temp -> path);
-      fprintf(backup, "%s\n", MKBKP_FILE_DELIMITER);
+      fprintf(backup, "%s", MKBKP_FILE_DELIMITER);
+      fprintf(backup, "%s", temp -> path);
+      fprintf(backup, "%s", MKBKP_FILE_DELIMITER);
 
       // Scrive il file appena letto all'interno dell'archivio
       fwrite(temp->line, 1, temp -> size, backup);
@@ -217,4 +218,35 @@ void makeBackup(char* path) {
   // Chiude il directory stream.
   // La funzione restituisce 0 in caso di successo e -1 altrimenti, 
   closedir(dir);
+}
+
+void showBackupContent(char* archive) {
+  int c;
+  fpos_t pos;
+
+  char workingdir[PATH_MAX_LENGTH];
+  getcwd(workingdir, PATH_MAX_LENGTH);
+  strcat(workingdir, "/");
+  strcat(workingdir, archive);
+
+  printf("Contenuto del file: %s\n", workingdir);
+
+  FILE* archivetoshow = fopen(workingdir, "r");
+  if(archivetoshow == NULL) {
+    perror(workingdir);
+    exit(EXIT_FAILURE);
+  } else {
+    c = fgetc(archivetoshow);
+    printf("%c", c);
+    fgetpos(archivetoshow, &pos);
+    int n;
+    for(n = 0; n < sizeof(MKBKP_FILE_DELIMITER); n++) {
+      pos++;
+      fsetpos(archivetoshow, &pos);
+      c = fgetc(archivetoshow);
+      printf ("%c", c);
+    }
+  }
+
+  fclose(archivetoshow);
 }
