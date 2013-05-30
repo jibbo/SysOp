@@ -3,47 +3,40 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-
 #include <dirent.h>
 #include <sys/dir.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-
+#include <fcntl.h>
 #include <syslog.h>
 
 typedef struct {
-  char* path;
+  char path[256];
   FILE* file;
   char* line;
   size_t size;
   ssize_t read;
-} file;
+} str_file;
 
-typedef struct {
-  char* path;
-  FILE* file;
-  size_t size;
-} archive;
+FILE* backup;
 
-file* backup;
+char filevalue[256];
+char dirvalue[256];
+char cwd[256];
 
-void scanworkingdir(char*, int);
-void printhelp();
-void showparametererror(int optvalue, int flag, int parameter, int optindexvalue);
-void createarchive(char* filename, char* directory);
-void fillarchive(char* directory);
-bool filealredyexists(const char*);
+int f_flag = 0;
+int c_flag = 0;
+int x_flag = 0;
+int t_flag = 0;
+
+void makeBackup(char* path);
+void printHelp();
+void createArchive(char* filename, char* directory);
+int fileAlreadyExists(const char*);
+void manage();
 
 int main(int argc, char **argv) {
-  int c_flag = 0;
-  int x_flag = 0;
-  int t_flag = 0;
-  int f_flag = 0;
 
-  char *filevalue = NULL;
-  char *dirvalue = NULL;
-
-  int index;
   int c;
      
   opterr = 0;
@@ -52,45 +45,64 @@ int main(int argc, char **argv) {
     switch (c) {
       case 'f':
         f_flag = 1;
-        dirvalue = optarg;
-        scanworkingdir(argv[optind], 2);
-        createarchive(dirvalue, argv[optind]);
+        strcpy(dirvalue, optarg);
+        strcpy(filevalue, argv[optind]);
         break;
-
       case 'c':
         c_flag = 1;
-        showparametererror(optopt, f_flag, c, optind);
         break;
-
       case 'x':
         x_flag = 1;
-        showparametererror(optopt, f_flag, c, optind);
         break;
-
       case 't':
         t_flag = 1;
-        showparametererror(optopt, f_flag, c, optind);
         break;
-
       case '?':
         if (optopt == 'f') {
           fprintf (stderr, "Option -%c requires the archive as an argument\n", optopt);
         } else if (isprint (optopt)) {
           fprintf (stderr, "Unknown option '-%c'\n", optopt);
-          printhelp();
+          printHelp();
         } else {
-          fprintf (stderr, "Unknown option character `\\x%x'.\n", optopt);
+          fprintf (stderr, "Unknown option character '\\x%x'.\n", optopt);
         }
         return 1;
 
       default:
         abort ();
     }
+
+    manage();
   }
+
   return 0;
 }
 
-void printhelp() {
+void manage() {
+  if(c_flag == 1 && (filevalue == NULL && dirvalue == NULL)) {
+    printf("You must use the -f flag to specify the archive you want to create\n");
+
+  } else if((c_flag == 1 && f_flag == 1) && (filevalue != NULL && dirvalue != NULL)) {
+    // Crea l'archivio
+    printf("Creo l'archivio chiamato: %s della cartella: %s\n", filevalue, dirvalue);
+    // createArchive(filevalue, dirvalue);
+  } else if(x_flag == 1 && (filevalue == NULL && dirvalue == NULL)) {
+    printf("You must use the -f flag to specify the archive you want to extract\n");
+
+  } else if((x_flag == 1 && f_flag == 1) && (filevalue != NULL && dirvalue != NULL)) {
+    // Estrae l'archivio
+    printf("Estraggo l'archivio: %s\n", filevalue);
+
+  } else if(t_flag == 1 && (filevalue == NULL && dirvalue == NULL)) {
+    printf("You must use the -f flag to specify the archive you want to analyze\n");
+
+  } else if ((t_flag == 1 && f_flag == 1) && (filevalue != NULL && dirvalue != NULL)) {
+    // Mostra il contenuto dell'archivio
+    printf("Mostro il contenuto dell'archivio: %s\n", filevalue);
+  }
+}
+
+void printHelp() {
   printf("Usage: mkbkp [-c] [-x] [-t] [-f]\n");
   printf("\t -f to create or extract an archive");
   printf("\n\t -c to create a new archive");
@@ -98,59 +110,70 @@ void printhelp() {
   printf("\n\t -t to display the content of an archive\n");
 }
 
-void showparametererror(int optvalue, int flag, int parameter, int optindexvalue) {
-  if(optvalue = 'f' && !flag && optindexvalue == 2 ) {
-    if(parameter == 'c') {
-      printf("You must use the -f flag to specify the archive you want to create\n");
-    } else if(parameter == 'x') {
-      printf("You must use the -f flag to specify the archive you want to extract\n");
-    } else if(parameter == 't') {
-      printf("You must use the -f flag to specify the archive you want to analyze\n");
+void createArchive(char* filename, char* directory) {
+  if(fileAlreadyExists(filename)) {
+    printf("Sorry, a file named '%s' already exists; use another one\n", filename);
+  } else {
+    if(creat(filename, 0666) == -1) {
+      printf("There was an error while creating the file %s\n", filename);
+    } else {
+      printf("File created correctly\n");
     }
   }
 }
 
-void createarchive(char* filename, char* directory) {
-  if(filealredyexists(filename)) {
-    printf("Sorry, a file named '%s' already exists; use another one\n", filename);
-  } else {
-    FILE *archive2 = fopen(filename, "w");
-  }
-}
-
-void fillarchive(char* directory) {
-  //
-}
-
-bool filealredyexists(const char* filename) {
-  FILE * file = fopen(filename, "r");
+int fileAlreadyExists(const char* filename) {
+  FILE* file = fopen(filename, "r");
   if(file) {
     fclose(file);
-    return true;
+    return 1;
   }
-  return false;
+  return 0;
 }
 
-void scanworkingdir(char* path, int indent) {
+void makeBackup(char* path) {
   struct dirent* direntry;
-  DIR* dir;   // file descriptor usato per la gestione del directory stream
+  DIR* dir;
   struct stat stbuf;
   int is_dir;
   int access_err;
 
+  FILE *openedfile;
+
+  char* buffer = NULL;
+
+  int flength = 0;
+
   // La funzione opendir apre un directory stream.
   // Restituisce un puntatore ad un oggetto di tipo DIR in caso di successo e NULL in caso di errore.
   // Inoltre posiziona lo stream sulla prima voce contenuta nella directory.
-
   if ((dir = opendir(path)) == NULL) { 
       printf("scanworkingdir: can't open %s\n", path);
       return;
   }
 
+  // Legge la cartella corrente
+  getcwd(cwd, 256);
+
+  printf("%s\n", cwd);
+  strcat(cwd, filevalue);
+  printf("%s\n", cwd);
+
+  // Apro il file di backup in Append
+  if(fileAlreadyExists(filevalue) == 0) {
+    backup = fopen(cwd, "a+");
+    if(backup == NULL) {
+      perror(cwd);
+      exit(EXIT_FAILURE);
+    }
+  } else {
+    perror("Sorry, a file with this name already exists");
+    exit(EXIT_FAILURE);
+  }
+
   // La funzione readdir legge la voce corrente nella directory, posizionandosi sulla voce successiva.
   // Restituisce un puntatore al directory stream in caso di successo e NULL in caso di errore.
   // Loop on directory entries
-
   while ((direntry = readdir(dir)) != NULL) {
     if (strcmp(direntry -> d_name, ".") == 0 || strcmp(direntry -> d_name, "..") == 0) {
       continue;
@@ -161,19 +184,42 @@ void scanworkingdir(char* path, int indent) {
     snprintf(concat, length, "%s/%s", path, direntry -> d_name);
     stat(concat, &stbuf);
 
-    // Gestisce l'indentazione della stampa delle directory
-    int i = 0;
-    while(i++ < indent) { 
-      printf("  ");
+    // Bool che indica se è una directory
+    is_dir = ((stbuf.st_mode & S_IFMT) == S_IFDIR);
+
+    // se è una directory
+    if (is_dir) {
+      printf ("%s/\n" , direntry -> d_name);
+
+      makeBackup(direntry -> d_name);
+    } else {
+      // allora è un file
+      printf ("%s\n" , direntry -> d_name);
+
+      str_file* temp;
+
+      temp = malloc(sizeof(str_file));
+      strcpy(temp -> path, dirvalue);
+      strcat(temp -> path, direntry -> d_name);
+
+      temp -> file = fopen(temp -> path, "rb");
+      if(temp -> file == NULL) {
+        perror(temp -> path);
+        exit(EXIT_FAILURE);
+      }
+
+      fseek(temp -> file, 0, SEEK_END);
+      temp -> size = ftell(temp -> file);
+      fseek(temp -> file, 0, SEEK_SET);
+      temp -> read = fread(temp -> line, temp -> size, 1, temp -> file);
+
+      //Scrive il delimitatore del file all'interno dell'archivio
+      fprintf(backup, "%s\n", cwd);
+      // Scrive il file appena letto all'interno dell'archivio
+      fwrite(temp->line, temp-> size, 1, backup);
+      fclose(temp -> file);
     }
 
-    is_dir = ((stbuf.st_mode & S_IFMT) == S_IFDIR);
-    if (is_dir) {
-      printf ("%s/\n" , direntry -> d_name );
-      scanworkingdir(concat, indent + 1);
-    } else {
-      printf ("%s\n" , direntry -> d_name);
-    }
     free(concat);
   }
 
