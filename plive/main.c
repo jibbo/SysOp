@@ -178,49 +178,54 @@ int listOfProcess(PROC *proc,int len)
     closedir(d);
 }
 
-void getTotalTime(int *out){
+void getTotalTime(unsigned long *out){
    FILE *f= fopen("/proc/stat","r"); 
    if(f)
    {
         int user=0,nice=0,sys=0;
         char cpu[10];
         fscanf(f,"%s %d %d %d",cpu,&user,&nice,&sys);
-        *out=user+nice+sys;
+        //*out=user+nice+sys;
+        out=sys;
         close(f);
    }
 }
 
 int cmpfunc (const void * a, const void * b)
 {
-    MINI_PROC *l =(MINI_PROC *)a;
-    MINI_PROC *r =(MINI_PROC *)b;
-    if(l->cpu > r->cpu)
-        return 1;
-    if(l->cpu < r->cpu)
-        return -1;
-    return 0;
+    return ((*(MINI_PROC*)a).cpu - (*(MINI_PROC*)b).cpu);
 }
-void *topTimes(PROC* before,PROC* after, MINI_PROC* out,int len,
-    int timeTotalBefore,int timeTotalAfter)
+void *topTimes(PROC* before,PROC* after, MINI_PROC* out,int len,int len2,
+    unsigned long *timeTotalBefore,unsigned long *timeTotalAfter)
 {
     MINI_PROC tmp[len];
     int i=0;
+    int j=0;
     for(i=0;i<len;i++)
     {
-        tmp[i].pid=after[i].pid;
-        tmp[i].ppid=after[i].ppid;
-        tmp[i].name=after[i].name;
-        float timeTotalAfter=after[i].stime+after[i].utime;
-        float timeTotalBefore=before[i].stime+before[i].utime;
-        if(after[i].status=='S')
+        bool end=false;
+        while(before[i].pid!=after[j].pid && !end)
+        {
+            if(j>=len2-1)
+                end=true;
+            j++;
+        }
+        if(end)
+            continue;
+        tmp[i].pid=after[j].pid;
+        tmp[i].ppid=after[j].ppid;
+        tmp[i].name=after[j].name;
+        /*if(after[j].status=='S')
             tmp[i].cpu=0;
-        else
-            tmp[i].cpu=100.0*(((after[i].stime+after[i].utime)-
-                (before[i].stime+before[i].utime))/
-                (timeTotalAfter-timeTotalBefore));
+        else*/
+            // tmp[i].cpu=100.0*(((after[j].stime+after[j].utime)-
+            //     (before[i].stime+before[i].utime))/
+            //     (*timeTotalAfter-*timeTotalBefore));
+            tmp[i].cpu=100.0*(after[j].stime-before[i].stime)/ (timeTotalAfter-timeTotalBefore);
+        j=0;
     }
     qsort(tmp, len, sizeof(MINI_PROC), cmpfunc);
-    int j=0;
+    j=0;
     for(i=n-1;i>=0;i--)
     {
         out[j].pid=tmp[i].pid;
@@ -229,13 +234,49 @@ void *topTimes(PROC* before,PROC* after, MINI_PROC* out,int len,
         j++;
     }
 }
+/*
 
-void copyProc(PROC* old,PROC* last,int len)
+int pid;
+    char name[256];
+    char status;
+    int ppid;
+    int pgrp;
+    int session;
+    int tty;
+    int tpgid;
+    unsigned flags;
+    unsigned long minfaults;
+    unsigned long majfaults;
+    unsigned long utime;
+    unsigned long stime;
+    unsigned long ctime;
+    */
+void copyProc(PROC* old,PROC* last,int len,int len2)
 {
     int i=0;
+    int j=0;
     for(i=0;i<len;i++)
     {
-        old[i]=last[i];
+        bool end=false;
+        while(old[i].pid!=last[j].pid && !end)
+        {
+            if(j>=len2-1)
+                end=true;
+            j++;
+        }
+        if(end)
+            continue;
+        old[i].pid=last[j].pid;
+        old[i].status=last[j].status;
+        old[i].ppid=last[j].ppid;
+        old[i].session=last[j].session;
+        old[i].tty=last[j].tty;
+        old[i].tpgid=last[j].tpgid;
+        old[i].flags=last[j].flags;
+        old[i].minfaults=last[j].majfaults;
+        old[i].utime=last[j].utime;
+        old[i].stime=last[j].stime;
+        old[i].ctime=last[j].ctime;
     }
 }
 
@@ -251,24 +292,24 @@ int main(int argc, char **argv)
          unsigned long oldTimes[np];
          initscr();
          pthread_create(&look, NULL, updateVariables, NULL);
-         int timeTotalBefore=0;
+         unsigned long timeTotalBefore=0;
          getTotalTime(&timeTotalBefore);
          while(1)
          {
             sleep(seconds);
-            PROC proc[np];
-            listOfProcess(proc,np);
+            int nnp=numberOfProcess();
+            PROC proc[nnp];
+            listOfProcess(proc,nnp);
             MINI_PROC out[n];
-            int timeTotalAfter=0;
+            unsigned long timeTotalAfter=0;
             getTotalTime(&timeTotalAfter);
-            topTimes(old_proc,proc,out,np,timeTotalBefore,timeTotalAfter);
-            copyProc(old_proc,proc,np);
+            topTimes(old_proc,proc,out,np,nnp,&timeTotalBefore,&timeTotalAfter);
             clear();
+            stmpProc(out);
+            copyProc(old_proc,proc,np,nnp);
             // printw("TotalTime spent: %d\n",timeTotalAfter-timeTotalBefore);
             // refresh();
             timeTotalBefore=timeTotalAfter;
-            stmpProc(out);
-            
         }
         endwin();
     }
