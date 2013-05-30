@@ -218,36 +218,31 @@ void *topTimes(PROC* before,PROC* after, MINI_PROC* out,int len,int len2,
 {
     MINI_PROC tmp[len2];
     int i=0;
-    int j=0;
+
     for(i=0;i<len2;i++)
     {
         tmp[i].pid=after[i].pid;
         tmp[i].ppid=after[i].ppid;
         strcpy(tmp[i].name,after[i].name);
-        
-        //debug
-        //printw("cp: %d %s \n",after[i].pid,after[i].name);
-        //refresh();
-        
         //calcolo la cpu utilizzata da ogni processo
         if(i<len && after[i].pid==before[i].pid)
-          tmp[i].cpu=100*((after[i].stime+after[i].utime)-(before[i].utime+before[i].stime))/ (timeTotalAfter-timeTotalBefore);
+          tmp[i].cpu=100*((after[i].stime+after[i].utime)-
+            (before[i].utime+before[i].stime))/ 
+            (timeTotalAfter-timeTotalBefore);
          else
-          tmp[i].cpu=100* (after[i].stime+after[i].utime) / timeTotalAfter;
+          tmp[i].cpu=100* (after[i].stime+after[i].utime) / timeTotalAfter-timeTotalBefore;
     }
     //ordino l'array per utilizzo di cpu in modo crescente
-    //qsort(tmp, len2, sizeof(MINI_PROC), cmpCPU);
+    qsort_r(tmp, len2, sizeof(MINI_PROC), cmpCPU);
     
     //prendo i primi n processi
     //partendo dal fondo
-    j=0;
-    for(i=0;i<n;i++)
+    for(i=0;i<n && i<len2;i++)
     {
-        out[j].pid=tmp[i].pid;
-        out[j].ppid=tmp[i].ppid;
-        //out[j].name=tmp[i].name;
-        strcpy(out[j].name,tmp[i].name);
-        j++;
+        out[i].pid=tmp[i].pid;
+        out[i].ppid=tmp[i].ppid;
+        strcpy(out[i].name,tmp[i].name);
+        out[i].cpu=tmp[i].cpu;
     }
 }
 
@@ -328,7 +323,8 @@ int main(int argc, char **argv)
             // printw("time before: %f, timeTotalAfter: %f,totalTime: %f",timeTotalBefore,timeTotalAfter,timeTotalAfter-timeTotalBefore);
             // refresh();
             stmpProc(out);
-     
+    
+            //Aggiorno i dati per il prossimo "giro"
             copyProc(old_proc,proc,nnp);
             np=nnp;
             timeTotalBefore=timeTotalAfter;
