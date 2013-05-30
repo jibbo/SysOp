@@ -188,11 +188,11 @@ float getTotalTime(){
    float out=0;
    if(f)
    {
-        float user=0,nice=0,sys=0;
+        unsigned long user=0,nice=0,sys=0;
         char cpu[10];
-        fscanf(f,"%s %f %f %f",cpu,&user,&nice,&sys);
+        fscanf(f,"%s %lu %lu %lu",cpu,&user,&nice,&sys);
         //*out=user+nice+sys;
-        out=user+sys;
+        out=(float)user+sys;
         close(f);
    }
    return out;
@@ -207,9 +207,11 @@ int cmpPID (const void * a, const void * b)
 
 //funzione per confrontare due 
 //mini processi in base alla cpu utilizzata
+//il -1 e' per fare l'ordinamento dcrescente
 int cmpCPU (const void * a, const void * b)
 {
-    return ((*(MINI_PROC*)a).cpu - (*(MINI_PROC*)b).cpu);
+    return ((*(MINI_PROC*)a).cpu - (*(MINI_PROC*)b).cpu) *-1;
+    //return 1;
 }
 
 //funzione principale
@@ -230,14 +232,19 @@ void *topTimes(PROC* before,PROC* after, MINI_PROC* out,int len,int len2,
             (before[i].utime+before[i].stime))/ 
             (timeTotalAfter-timeTotalBefore);
          else
-          tmp[i].cpu=100* (after[i].stime+after[i].utime) / timeTotalAfter-timeTotalBefore;
+          tmp[i].cpu=100* (after[i].stime+after[i].utime) / (timeTotalAfter-timeTotalBefore);
     }
     //ordino l'array per utilizzo di cpu in modo crescente
-    qsort_r(tmp, len2, sizeof(MINI_PROC), cmpCPU);
+    qsort(tmp, len2, sizeof(MINI_PROC), cmpCPU);
     
+    
+    //questa e' per controllare che non vada
+    // l'utente non chieda piu' processi di
+    //quelli  presenti nel sistema 
+    n = (n>len2) ? len2:n;
+
     //prendo i primi n processi
-    //partendo dal fondo
-    for(i=0;i<n && i<len2;i++)
+    for(i=0;i<n;i++)
     {
         out[i].pid=tmp[i].pid;
         out[i].ppid=tmp[i].ppid;
@@ -254,7 +261,6 @@ void copyProc(PROC* old,PROC* last,int len2)
     free(old);
     old = (PROC *) malloc(sizeof(PROC)*len2);
     int i=0;
-    int j=0;
     for(i=0;i<len2;i++)
     {
         old[i].pid=last[i].pid;
@@ -319,11 +325,8 @@ int main(int argc, char **argv)
             
             //pulisco e stampo a video
             clear();
-            //debug
-            // printw("time before: %f, timeTotalAfter: %f,totalTime: %f",timeTotalBefore,timeTotalAfter,timeTotalAfter-timeTotalBefore);
-            // refresh();
             stmpProc(out);
-    
+
             //Aggiorno i dati per il prossimo "giro"
             copyProc(old_proc,proc,nnp);
             np=nnp;
