@@ -151,7 +151,6 @@ int listOfProcess(PROC *proc, int len)
     FILE *f;
     struct dirent *dir;
     int i=0;
-    len = numberOfProcess();
     while( ( dir=readdir(d) ) != NULL && i<len)
     {
         //char path[267];
@@ -172,7 +171,6 @@ int listOfProcess(PROC *proc, int len)
                     &proc[i].flags,&proc[i].minfaults,&proc[i].majfaults,
                     &proc[i].utime,&proc[i].stime, &proc[i].ctime);
                 //removes parenthesis from the name of a process
-                
                 int j=0;
                 for(j=1;j<strlen(name)-1; j++)
                     proc[i].name[j-1]=name[j];
@@ -232,25 +230,28 @@ int cmpCPU (const void * a, const void * b)
 }
 
 //funzione principale
-void *topTimes(PROC* before,PROC* after, MINI_PROC* out,int len1,int len2,
+int topTimes(PROC* before,PROC* after, MINI_PROC* out,int len1,int len2,
     float timeTotalBefore,float timeTotalAfter)
 {
 	int first=0;
-	int len=0;
+	int minlen=0;
+	int maxlen=0;
 	if(len2>len1)
 	{
-		len=len1;
+		minlen=len1;
+		maxlen=len2;
 		first=1;
 	}
 	else
 	{
-		len=len2;
+		minlen=len2;
+		maxlen=len1;
 		first=0;
 	}
-    MINI_PROC tmp[len];
+    MINI_PROC tmp[maxlen];
     int i=0;
 
-    for(i=0;i<len;i++)
+    for(i=0;i<minlen;i++)
     {
 					tmp[i].pid=after[i].pid;
 					tmp[i].ppid=after[i].ppid;
@@ -261,19 +262,33 @@ void *topTimes(PROC* before,PROC* after, MINI_PROC* out,int len1,int len2,
 		          (before[i].utime+before[i].stime))/ 
 		         (timeTotalAfter-timeTotalBefore);
     }
-    //for(i=len;i< ( (first)?len2:len1) ;i++)
-    //{
-    //	if(first)
-    //	{
-    //	}
-    //}
+    for(i=minlen;i<maxlen;i++)
+    {
+    	if(first)
+    	{
+    		  tmp[i].pid=after[i].pid;
+					tmp[i].ppid=after[i].ppid;
+					strcpy(tmp[i].name,after[i].name);
+		      //calcolo la cpu utilizzata da ogni processo
+		      tmp[i].cpu=seconds*100*(after[i].stime+after[i].utime)/timeTotalAfter;
+    	}
+    	else
+    	{
+    		  tmp[i].pid=before[i].pid;
+					tmp[i].ppid=before[i].ppid;
+					strcpy(tmp[i].name,before[i].name);
+		      //calcolo la cpu utilizzata da ogni processo
+		      tmp[i].cpu=seconds*100*(before[i].stime+before[i].utime)/(timeTotalAfter-timeTotalBefore);
+    	}
+    	
+    }
     //ordino l'array per utilizzo di cpu in modo crescente
-    qsort(tmp, len, sizeof(MINI_PROC), cmpCPU);
+    qsort(tmp, maxlen, sizeof(MINI_PROC), cmpCPU);
     
     //questa e' per controllare che
     // l'utente non chieda piu' processi di
     //quelli  presenti nel sistema 
-    n = (n>len) ? len:n;
+    int nloc = (n>maxlen) ? maxlen:n;
 
     //prendo i primi n processi
     for(i=0;i<n;i++)
@@ -283,6 +298,7 @@ void *topTimes(PROC* before,PROC* after, MINI_PROC* out,int len1,int len2,
         strcpy(out[i].name,tmp[i].name);
         out[i].cpu=tmp[i].cpu;
     }
+    return nloc;
 }
 
 //elimina il contenuto di old
@@ -341,7 +357,7 @@ int main(int argc, char **argv)
             
             //leggo i nuovi dati
             
-            nnp=numberOfProcess();
+            nnp=numberOfProcess()+1;
             //PROC proc[nnp];
             PROC *proc = (PROC *) malloc(sizeof(PROC)*nnp);
 						nnp=listOfProcess(proc,nnp);
@@ -353,17 +369,15 @@ int main(int argc, char **argv)
             
             MINI_PROC out[n];
             float timeTotalAfter=getTotalTime();
-            topTimes(old_proc,old_proc,out,np,np,timeTotalBefore,timeTotalAfter);
+            int nloc=topTimes(old_proc,proc,out,np,nnp,timeTotalBefore,timeTotalAfter);
             
 						//pulisco e stampo a video
             clear();
-            printw("np: %d ,nnp: %d\n",np,nnp);
-            refresh();
-            stmpNProc(out,(n>nnp) ? nnp:n);
+            stmpNProc(out,nloc);
 
             //Aggiorno i dati per il prossimo "giro"
-						copyProc(old_proc,proc,nnp);
-            np=nnp;
+						copyProc(old_proc,proc,nloc);
+            np=nloc;
             timeTotalBefore=timeTotalAfter;
         }
         endwin();
