@@ -1,3 +1,13 @@
+/*
+    Anno accademico     2012/2013
+    Corso studio        Informatica
+    Progetto            #1 Plive
+    Componenti:
+        Zen Roberto             151737
+        Giovanni De Francesco   152080
+        Perantoni Nicola        151709
+*/
+
 #include <stdio.h>
 #include <stdint.h>
 #include <ctype.h>
@@ -49,8 +59,10 @@ typedef struct mini_process_t
     float cpu;
 }MINI_PROC;
 
-
-void handler(int sig) {
+//funzione che viene chiamato quando 
+//qualcosa di brutto acade al 
+//nostro programma (e.g. Segmentation fault)
+void errors(int sig) {
   endwin();
   void *array[10];
   size_t size;
@@ -94,25 +106,37 @@ int checkflag(int argc, char **argv)
         //check if the argument passed is valid
         if(n<=0) {
             fprintf (stderr, "Invalid argument passed to `-n' option.\n",optopt);
+            syslog(LOG_ERR, "Invalid argument passed to `-n' option.");
             return -1;
         }
         return 1;
         case '?':
         if (optopt == 'n')
+        {
+            syslog(LOG_ERR, "Option `-n` requires an argument.");
             fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+        }
         else if (isprint (optopt))
+        {
+            syslog(LOG_ERR, "Unknown option `-%c`.",optopt);
             fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+        }
         else
-            fprintf (stderr,
-               "Unknown option character `\\x%x'.\n",
-               optopt);
-        return -1;
+        {
+            syslog(stderr,"Unknown option character `\\x%x'.\n",optopt);
+            fprintf (stderr,"Unknown option character `\\x%x'.\n",optopt);
+        }
+        
+         return -1;
         //case for nothing passed as option
         default:
-        return 1;
+            return 1;
     }
 }
 
+//this is the function that is 
+//called by a thread to watch
+//user's input
 void *updateVariables()
 {
     while(true)
@@ -129,6 +153,8 @@ void *updateVariables()
             exit(EXIT_SUCCESS);
             closelog();
         }
+        else
+            syslog(LOG_ERR, "invalid input %c",c);
     }
 
 }
@@ -160,7 +186,6 @@ int listOfProcess(PROC *proc, int len)
     int i=0;
     while( ( dir=readdir(d) ) != NULL && i<len)
     {
-        //char path[267];
         char *path = (char *) malloc(sizeof(char)*267);
         strcpy(path,"/proc/");
         if(dir->d_name[0]>='1' && dir->d_name[0]<='9')
@@ -170,18 +195,13 @@ int listOfProcess(PROC *proc, int len)
             f= fopen(path,"r");
             if(f)
             {
-                    char * name = (char *) malloc(sizeof(char)*256);
                 //leggo il contenuto di /proc/pid/stat
                 fscanf(f,"%d %s %c %d %d %d %d %d %u %lu %lu %lu %lu %lu",
-                    &proc[i].pid,name,&proc[i].status,&proc[i].ppid,
+                    &proc[i].pid,proc[i].name,&proc[i].status,&proc[i].ppid,
                     &proc[i].pgrp,&proc[i].session,&proc[i].tty,&proc[i].tpgid,
                     &proc[i].flags,&proc[i].minfaults,&proc[i].majfaults,
                     &proc[i].utime,&proc[i].stime, &proc[i].ctime);
-                //removes parenthesis from the name of a process
-                //char * namepro=name+1;
-                //strcpy(proc[i].name,namepro);
-                proc[i].name[strlen(proc[i].name)-1]='\0';
-                free(name);
+                //TODO remove parenthesis   
                 i++;
             }
             fclose(f);
@@ -223,8 +243,7 @@ int cmpCPU (const void * a, const void * b)
 }
 
 //funzione principale
-int topTimes(PROC* before,PROC* after, MINI_PROC* out,int len1,int len2,
-    float timeTotalBefore,float timeTotalAfter)
+int topTimes(PROC* before,PROC* after, MINI_PROC* out,int len1,int len2)
 {
     int first=0;
     int minlen=0;
@@ -246,32 +265,29 @@ int topTimes(PROC* before,PROC* after, MINI_PROC* out,int len1,int len2,
 
     for(i=0;i<minlen;i++)
     {
-                    tmp[i].pid=after[i].pid;
-                    tmp[i].ppid=after[i].ppid;
-                    strcpy(tmp[i].name,after[i].name);
-              //calcolo la cpu utilizzata da ogni processo
-              if(after[i].pid==before[i].pid)
-                tmp[i].cpu=seconds*100*((after[i].stime+after[i].utime)-
-                  (before[i].utime+before[i].stime))/ 
-                 (timeTotalAfter-timeTotalBefore);
+        tmp[i].pid=after[i].pid;
+        tmp[i].ppid=after[i].ppid;
+        strcpy(tmp[i].name,after[i].name);
+        //calcolo la cpu utilizzata da ogni processo
+        if(after[i].pid==before[i].pid)
+            tmp[i].cpu=(after[i].utime-before[i].utime)/seconds;
+
     }
     for(i=minlen-1;i<maxlen;i++)
     {
         if(first)
         {
-              tmp[i].pid=after[i].pid;
-                    tmp[i].ppid=after[i].ppid;
-                    strcpy(tmp[i].name,after[i].name);
-              //calcolo la cpu utilizzata da ogni processo
-              tmp[i].cpu=seconds*100*(after[i].stime+after[i].utime)/timeTotalAfter;
+            tmp[i].pid=after[i].pid;
+            tmp[i].ppid=after[i].ppid;
+            strcpy(tmp[i].name,after[i].name);
+            tmp[i].cpu=after[i].utime/seconds;
         }
         else
         {
-              tmp[i].pid=before[i].pid;
-                    tmp[i].ppid=before[i].ppid;
-                    strcpy(tmp[i].name,before[i].name);
-              //calcolo la cpu utilizzata da ogni processo
-              tmp[i].cpu=seconds*100*(before[i].stime+before[i].utime)/(timeTotalBefore);
+            tmp[i].pid=before[i].pid;
+            tmp[i].ppid=before[i].ppid;
+            strcpy(tmp[i].name,before[i].name);
+            tmp[i].cpu=0;
         }
         
     }
@@ -335,41 +351,38 @@ int main(int argc, char **argv)
 
          syslog(LOG_INFO, "called plive with: %d", n);
 
-         signal(SIGSEGV, handler);
+         signal(SIGSEGV, errors);
+
+
          //operazioni da fare per avere
          //tutti i dati da processare
-         int np=numberOfProcess();
-        
-         //PROC old_proc[np];
-         PROC *old_proc = (PROC *) malloc(sizeof(PROC)*np);
-         np=listOfProcess(old_proc,np);
-         float timeTotalBefore= getTotalTime();
-         qsort(old_proc, np, sizeof(PROC), cmpPID);
+         int numProcOld=numberOfProcess();
+
+         PROC *old_proc = (PROC *) malloc(sizeof(PROC)*numProcOld);
+         numProcOld=listOfProcess(old_proc,numProcOld);
+         //float timeTotalBefore= getTotalTime();
+         qsort(old_proc, numProcOld, sizeof(PROC), cmpPID);
          
           //creo il thread che aspetta 
          //l'input dell'utente
          pthread_t look;
          pthread_create(&look, NULL, updateVariables, NULL);
-         int nnp=0;
+
+         int actualNumProc=0;
          while(1)
          {
             sleep(seconds);
             
             //leggo i nuovi dati
+            actualNumProc=numberOfProcess()+1;
+            PROC *proc = (PROC *) malloc(sizeof(PROC)*actualNumProc);
+            actualNumProc=listOfProcess(proc,actualNumProc);
+            qsort(proc, actualNumProc, sizeof(PROC), cmpPID);
             
-            nnp=numberOfProcess()+1;
-            //PROC proc[nnp];
-            PROC *proc = (PROC *) malloc(sizeof(PROC)*nnp);
-            nnp=listOfProcess(proc,nnp);
-            qsort(proc, nnp, sizeof(PROC), cmpPID);
-            
-            //debug FINO QUA NESSUN SEGFAULT
-            //clear();
-            //stmpAllProc(proc,nnp);
             
             MINI_PROC out[n];
-            float timeTotalAfter=getTotalTime();
-            int nloc=topTimes(old_proc,proc,out,np,nnp,timeTotalBefore,timeTotalAfter);
+            //float timeTotalAfter=getTotalTime();
+            int nloc=topTimes(old_proc,proc,out,numProcOld,actualNumProc);
             
             //pulisco e stampo a video
             clear();
@@ -377,8 +390,7 @@ int main(int argc, char **argv)
 
             //Aggiorno i dati per il prossimo "giro"
             copyProc(old_proc,proc,nloc);
-            np=nloc;
-            timeTotalBefore=timeTotalAfter;
+            numProcOld=nloc;
         }
         endwin();
     }
