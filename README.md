@@ -26,10 +26,12 @@ Se i files hanno dimensione diversa si procederà a leggere la porzione di testo
 
 Nel caso si tratti di due directories, la procedura è diversa.
 Per prima cosa, vengono confrontati i due percorsi: se si tratta di percorsi uguali, anche le directory avranno lo stesso contenuto.
-Altrimenti, vengono letti tutti i files presenti nella prima cartella: ciascuno di esso viene confrontato con tutti i files presenti nella seconda cartella, 
+Altrimenti, vengono letti tutti i files presenti nella prima cartella: ciascuno di esso viene confrontato con tutti i files presenti nella seconda cartella.
+Se si trovano files omonimi si applica la equal su entrambi i files; se invece la seconda cartella non contiene il file che si sta cercando, viene stampata in console il nome del file con una '+' ad indicare che la prima cartella contiene un file che non è presente nella seconda.
+Se si trovano cartelle omonime si applica ricorsivamente la equal che analizza i files contenuti in esse.
 
-	equal A B  mostra a video le differenze che ha la directory A rispetto alla directory B.
-	equal A B  mostra a video le differenze che ha il (la) file (directory) B rispetto al (alla) file (directory) A.
+	equal A B  mostra a video le differenze che ha il (la) file (directory) A rispetto al (alla) file (directory) B.
+	equal A B  mostra a video le differenze che ha il (la) file (directory) B rispetto al (alla) file (directory) A. 
 
 
 Plive [ DE FRANCESCO ]

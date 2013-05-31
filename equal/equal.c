@@ -1,3 +1,13 @@
+/*
+    Anno accademico     2012/2013
+    Corso studio        Informatica
+    Progetto            #1 Equal
+    Componenti:
+        Zen Roberto             151737
+        Giovanni De Francesco   152080
+        Perantoni Nicola        151709
+*/
+
 
 #include <ctype.h>
 #include <stdio.h>
@@ -540,9 +550,7 @@ int main (int argc, char **argv) {
 
             // Differenze di path1 rispetto al path2..
             dirwalk(argv[1], argv[2], indent, PLUS_SYMB);
-
-            printf("---------------------------------------------------\n");
-
+            
             // Differenze di path2 rispetto al path1..
             dirwalk(argv[2], argv[1], indent, MINUS_SYMB);
         }
