@@ -19,6 +19,10 @@
 
 int main (int argc, char **argv) {
 
+    // Gestisco numero errato dei parametri
+    if (argc != 3) { printHelp(); }
+
+
     // Apro il file di log..
     openlog(argv[0], LOG_CONS || LOG_PID, LOG_LOCAL0);
     syslog(LOG_INFO, "Utility started: %s", argv[0]);
@@ -84,6 +88,13 @@ int main (int argc, char **argv) {
     // Termino con successo..
     syslog(LOG_INFO, "Exit success. Terminated.");
     exit(EXIT_SUCCESS);
+}
+
+void printHelp() {
+    printf("Confronta due files o directories.\n");
+    printf("Usage: equal [path1] [path2]\n");
+    printf("E' necessario passare due percorsi: entrambi files o directories\n");
+    exit(EXIT_FAILURE);
 }
 
 void printIndented(char * str, int indent_limit) {

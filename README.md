@@ -18,14 +18,13 @@ Introduction:
 
 L'idea iniziale era quella di implementare la equal nel seguente modo:
 
-Nel caso in cui i due percorsi rappresentavano due files si effettuava un controllo incrociato, leggendo una porzione dal primo file e scorrendo tutto il secondo fino a trovarne una porzione uguale oppure fino a quando il secondo file fosse stato letto completamente. In questo modo riuscivamo ad ottenere correttamente le differenze del primo file fino a trovare una porzione comune.
+Nel caso in cui i due percorsi rappresentassero due files si effettuava un controllo incrociato, leggendo una porzione dal primo file e scorrendo tutto il secondo fino a trovarne una porzione uguale oppure fino a quando il secondo file fosse stato letto completamente. In questo modo saremmo riusciti ad ottenere correttamente le differenze tra i files fino a trovare una porzione comune.
 
-Per quanto riguarda le cartelle intendavamo utilizzare la funzione adoperata per i files nel caso ci fossero stati due files omonimi; riconoscendo inoltre se la directory del primo path fosse contenuta nella directory del secondo path o viceversa.
-
-L' utility implementata è molto simile a quella già offerta da unix: la diff. Tuttavia differisce per alcune scelte implementative.
+Per quanto riguarda le cartelle avremmo utilizzato la funzione adoperata per i files nel caso ci fossero stati due files omonimi; riconoscendo inoltre se la directory del primo path fosse contenuta nella directory del secondo path o viceversa.
 
 Our Solution:
 
+L' utility implementata è molto simile a quella già offerta da unix: la diff. Tuttavia differisce per alcune scelte implementative.
 Innanzitutto i percorsi passati per parametro devono essere compatibili: entrambi devono rappresentare files o directory. Non può quindi essere confrontato un file con una directory o viceversa.
 
 Se i due percorsi passati per parametro rappresentano due files allora per prima cosa si guarda se i percorsi sono uguali; in caso che di percorsi uguali ovviamente non viene stampato a video alcuna differenza perchè i files sono uguali.

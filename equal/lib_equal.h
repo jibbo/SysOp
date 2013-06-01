@@ -50,4 +50,7 @@ int empty_directory(char *);
 // Produce una stampa sulla console.
 void printIndented(char *, int);
 
+// Stampa un messaggio di Help per l'utilizzo corretto della utility.
+void printHelp();
+
 #endif
