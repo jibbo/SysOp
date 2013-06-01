@@ -66,17 +66,27 @@ Examples:
 	2 directories, 3 files											2 directories, 4 files
 
 	In questo caso:
+
 		/home/roberto/Scrivania/folder1/file1.txt e /home/roberto/Scrivania/folder2/file1.txt hanno contenuto diverso.
 		/home/roberto/Scrivania/folder1/subfolder/file2.txt e /home/roberto/Scrivania/folder2/subfolder2/file2.txt sono uguali.
 
 
-	/home/roberto/Scrivania/folder1/file1.txt 						/home/roberto/Scrivania/folder2/file1.txt
+	/home/roberto/Scrivania/folder1/file1.txt
 
-	Questo 																								Questo
-	è 																										è
-	il file1.txt 																					il file1.txt
-	in folder1																						in folder2
-	fine 																									fine
+	Questo
+	è
+	il file1.txt
+	in folder1
+	fine
+
+
+	/home/roberto/Scrivania/folder2/file1.txt
+
+	Questo
+	è
+	il file1.txt
+	in folder2
+	fine
 
 
 	equal /home/roberto/Scrivania/folder1/file1.txt /home/roberto/Scrivania/folder2/file1.txt
@@ -84,6 +94,7 @@ Examples:
 	  Differences between files: /home/roberto/Scrivania/folder1/file1.txt - /home/roberto/Scrivania/folder2/file1.txt
     + in folder1
     - in folder2
+
 
 
   equal /home/roberto/Scrivania/folder1 /home/roberto/Scrivania/folder2
