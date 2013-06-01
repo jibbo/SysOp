@@ -14,7 +14,18 @@ Mkbkp [ PERANTONI ]
 Equal [ ZEN ]
 =====
 
+Introduction:
+
+L'idea iniziale era quella di implementare la equal nel seguente modo:
+
+Nel caso in cui i due percorsi rappresentavano due files si effettuava un controllo incrociato, leggendo una porzione dal primo file e scorrendo tutto il secondo fino a trovarne una porzione uguale oppure fino a quando il secondo file fosse stato letto completamente. In questo modo riuscivamo ad ottenere correttamente le differenze del primo file fino a trovare una porzione comune.
+
+Per quanto riguarda le cartelle intendavamo utilizzare la funzione adoperata per i files nel caso ci fossero stati due files omonimi; riconoscendo inoltre se la directory del primo path fosse contenuta nella directory del secondo path o viceversa.
+
 L' utility implementata è molto simile a quella già offerta da unix: la diff. Tuttavia differisce per alcune scelte implementative.
+
+Our Solution:
+
 Innanzitutto i percorsi passati per parametro devono essere compatibili: entrambi devono rappresentare files o directory. Non può quindi essere confrontato un file con una directory o viceversa.
 
 Se i due percorsi passati per parametro rappresentano due files allora per prima cosa si guarda se i percorsi sono uguali; in caso che di percorsi uguali ovviamente non viene stampato a video alcuna differenza perchè i files sono uguali.
@@ -31,7 +42,60 @@ Se si trovano files omonimi si applica la equal su entrambi i files; se invece l
 Se si trovano cartelle omonime si applica ricorsivamente la equal che analizza i files contenuti in esse.
 
 	equal A B  mostra a video le differenze che ha il (la) file (directory) A rispetto al (alla) file (directory) B.
-	equal A B  mostra a video le differenze che ha il (la) file (directory) B rispetto al (alla) file (directory) A. 
+	equal A B  mostra a video le differenze che ha il (la) file (directory) B rispetto al (alla) file (directory) A.
+
+Usage:
+
+Per quanto riguarda i files è sufficiente passare i paths dei files typo. Es:
+	equal /home/user/file1.c /home/user/folder/file2.c
+
+Per quanto riguarda le cartelle è sufficiente passare i paths delle cartelle omettendo l'ultimo SLASH. Es:
+	equal /home/user/folder1 /home/user/folder2
+
+Examples:
+
+	/home/roberto/Scrivania/folder1							/home/roberto/Scrivania/folder2
+	├── file1.txt 															├── file1.txt
+	│   																				├── file2.txt
+	│   																				├── img1.png
+	├── subfolder1															├── subfolder1
+	│   └── file1.txt 													│
+	└── subfolder2															├── subfolder2
+	    └── file2.txt 															└── file2.txt   
+
+	2 directories, 3 files											2 directories, 4 files
+
+	In questo caso:
+		/home/roberto/Scrivania/folder1/file1.txt e /home/roberto/Scrivania/folder2/file1.txt hanno contenuto diverso.
+		/home/roberto/Scrivania/folder1/subfolder/file2.txt e /home/roberto/Scrivania/folder2/subfolder2/file2.txt sono uguali.
+
+
+	/home/roberto/Scrivania/folder1/file1.txt 						/home/roberto/Scrivania/folder2/file1.txt
+
+	Questo 																								Questo
+	è 																										è
+	il file1.txt 																					il file1.txt
+	in folder1																						in folder2
+	fine 																									fine
+
+
+	equal /home/roberto/Scrivania/folder1/file1.txt /home/roberto/Scrivania/folder2/file1.txt
+
+	  Differences between files: /home/roberto/Scrivania/folder1/file1.txt - /home/roberto/Scrivania/folder2/file1.txt
+    + in folder1
+    - in folder2
+
+
+  equal /home/roberto/Scrivania/folder1 /home/roberto/Scrivania/folder2
+
+	  Differences between files: /home/roberto/Scrivania/folder1/file1.txt and /home/roberto/Scrivania/folder2/file1.txt
+	    + in folder1
+	    - in folder2
+
+	  Differences between folders: /home/roberto/Scrivania/folder1/subfolder1 and /home/roberto/Scrivania/folder2/subfolder1
+	    + file1.txt
+	  - img1.png
+	  - file2.txt
 
 
 Plive [ DE FRANCESCO ]
