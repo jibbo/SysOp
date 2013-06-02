@@ -1,16 +1,14 @@
-#include <ctype.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <dirent.h>
-#include <sys/dir.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <fcntl.h>
-#include <syslog.h>
-#include <limits.h>
-#include <string.h>
+/*
+    Anno accademico     2012/2013
+    Corso studio        Informatica
+    Progetto            #1 MKBKB
+    Componenti:
+        Zen Roberto             151737
+        Giovanni De Francesco   152080
+        Perantoni Nicola        151709
+*/
+
+#include "mkbkp.h"
 
 #define PATH_MAX_LENGTH 256
 
@@ -36,13 +34,6 @@ int f_flag = 0;
 int c_flag = 0;
 int x_flag = 0;
 int t_flag = 0;
-
-int checkInput();
-void printHelp();
-void manageBackup(int opt_index, int argc, char** targets);
-void createBackup(char* path);
-void extractBackup(FILE* backup);
-void showBackupContent();
 
 int main(int argc, char **argv) {
 	int c;
