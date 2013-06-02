@@ -70,11 +70,9 @@ int main(int argc, char **argv) {
           fprintf(stderr, "Unknown option character '\\x%x'.\n", optopt);
         }
         return 1;
-
       default:
         abort ();
     }
-
     manage();
   }
 
@@ -342,7 +340,8 @@ void extractBackup(char* archive) {
     // Le cartelle vengono memorizzate nel seguente modo:
     // 
     // DIR=<path assoluto della cartella>
-    // 
+    // \n
+    // <contenuto del file>ENDFILE
 
     // I File invece vengono memorizzati nel seguente modo:
     // 
@@ -351,8 +350,11 @@ void extractBackup(char* archive) {
 
     fclose(archivetoshow);
     FILE* archivetoshow = fopen(workingdir, "r");
-
     FILE* temp = NULL;
+
+    // Continua a leggere il file fino a quando non arriva alla fine
+    // ad ogni ciclo apre il file destinatario per esportare il file
+    // dal file di backup alla cartella di destinazione
 
     while(fgets(buff2, PATH_MAX_LENGTH, archivetoshow) != NULL) {
       if(startsWithPre(pref, buff2) == 1) {
