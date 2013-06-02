@@ -1,7 +1,19 @@
+/*
+    Anno accademico     2012/2013
+    Corso studio        Informatica
+    Progetto            #1 Equal
+    Componenti:
+        Zen Roberto             151737
+        Giovanni De Francesco   152080
+        Perantoni Nicola        151709
+*/
+
 #include "mkbkp.h"
 
 #define PATH_MAX_LENGTH 256
 
+// Struct utilizzato per gestire l'inizializzazione del file
+// di backup quando viene costruito (durante la creazione)
 typedef struct {
   char path[PATH_MAX_LENGTH];
   FILE* file;
@@ -12,11 +24,13 @@ typedef struct {
 
 FILE* backup;
 
+// Stringhe utilizzate per gestire le directory
 char filevalue[PATH_MAX_LENGTH];
 char dirvalue[PATH_MAX_LENGTH];
 char cwd[PATH_MAX_LENGTH];
 char subpath[PATH_MAX_LENGTH];
 
+// Variabili che gestiscono i flag della syscall getopt()
 int f_flag = 0;
 int c_flag = 0;
 int x_flag = 0;
@@ -25,7 +39,11 @@ int t_flag = 0;
 int main(int argc, char **argv) {
   int c;
   opterr = 0;
+
+  // Apro il file di log..
+  openlog(argv[0], LOG_CONS || LOG_PID, LOG_LOCAL0);
   
+  // Utilizzo la syscall getopt() per i diversi flag utilizzati dall'applicazione
   while ((c = getopt (argc, argv, "f:cxt")) != -1) {
     switch (c) {
       case 'f':
@@ -63,6 +81,20 @@ int main(int argc, char **argv) {
   return 0;
 }
 
+// Gestisco tutti i casi di input che posso ricevere dall'utente:
+// * se il flag -c è utilizzato ma sia il file che la directory sono nulli mostro che deve essere inserito un archivio
+//   utilizzando anche il flag -f
+// * se il flag -c e il flag -f sono a 1 ma non vengono inseriti nè un file nè una directory
+//   comunico all'utente che li deve inserire
+// * se viene utilizzato il flag -x per estrarre un archivio ma non viene specificato l'archivio allora
+//   viene visualizzato il relativo messaggio di errore
+// * se viene utilizzato il flag -x in concomitanza con il flag -f allora significa che l'utente ha utilizzato
+//   il primo dei due per segnalare di voler estrarre l'archivio passato come parametro utilizzando il flag -f
+// * se viene utilizzato il flag -t per visualizzare il contenuto di un archivio ma l'archivio non viene specificato
+//   come parametro mostro il relativo messaggio di errore
+// * infine, se vengono utilizzati sia il flag t ed il flag f allora eseguo il metodo che mostra
+//   il contenuto di un file di backup passato come parametro
+
 void manage() {
   if(c_flag == 1 && (filevalue == NULL && dirvalue == NULL)) {
     printf("You must use the -f flag to specify the archive you want to create\n");
@@ -87,6 +119,10 @@ void manage() {
   }
 }
 
+// Metodo che contiene della breve documentazione che viene mostrato all'utente
+// se tenta di eseguire l'utility con un flag che non è stato implementato o se i
+// parametri utilizzati non rispettano quelli supportati dell'applicazione.
+
 void printHelp() {
   printf("Usage: mkbkp [-c] [-x] [-t] [-f]\n");
   printf("\t -f to create or extract an archive");
@@ -94,6 +130,11 @@ void printHelp() {
   printf("\n\t -x to extract an archive in the current directory");
   printf("\n\t -t to display the content of an archive\n");
 }
+
+// Metodo che si occupa di eseguire il backup di un file
+// prende come input la cartella di cui deve essere eseguito il backup
+// il nome del file destinatario del backup viene preso tramite la variabile 
+// globale filevalue
 
 void makeBackup(char* path) {
   struct dirent* direntry;
@@ -142,7 +183,7 @@ void makeBackup(char* path) {
     // Bool che indica se è una directory
     is_dir = ((stbuf.st_mode & S_IFMT) == S_IFDIR);
 
-    // se è una directory
+    // Se è una directory
     if (is_dir) {
       strcpy(subpath, path);
       strcat(subpath, "/");
@@ -228,6 +269,9 @@ void showBackupContent(char* archive) {
   fclose(archivetoshow);
 }
 
+// Questo metodo viene utilizzato per creare le sottocartelle
+// ricorsivamente quando viene estratto un archivio
+
 static void recursiveDirMake(const char *dir) {
     char tmp[256];
     char *p = NULL;
@@ -246,6 +290,13 @@ static void recursiveDirMake(const char *dir) {
         }
     mkdir(tmp, 0777);
 }
+
+
+// Metodo che si occupa di estrarre un archivio che viene 
+// passato come input
+// Viene assunto che l'archivio verrà estratto nella cartella corrente di lavoro,
+// infatti la prima operazione che viene eseguita è ottenere la cartella di lavoro
+// per estrarre lì l'archivio
 
 void extractBackup(char* archive) {
   char workingdir[PATH_MAX_LENGTH];
@@ -267,6 +318,11 @@ void extractBackup(char* archive) {
     exit(EXIT_FAILURE);
   } else {
 
+    // Viene fatto due volte il parsing del file che deve essere estratto
+    // La prima volta è costituita dal ciclo while qui sotto; durante il primo
+    // ciclo sul file vengono identificate le directory che sono presenti
+    // all'interno dello stesso per poi estrarre i relativi file all'interno delle stesse
+
     while(fgets(buff, PATH_MAX_LENGTH, archivetoshow) != NULL) {
       FILE* temp = NULL;
       if(startsWithPre("DIR=", buff) == 1) {
@@ -279,10 +335,23 @@ void extractBackup(char* archive) {
       }
     }
 
+    // Viene chiuso il file archivio perchè il parsing  è arrivato a fine file
+    // Viene successivamente riaperto per poter essere letto una seconda volta
+    // durante la quale verranno identificati i file all'interno di esso
+
+    // Le cartelle vengono memorizzate nel seguente modo:
+    // 
+    // DIR=<path assoluto della cartella>
+    // 
+
+    // I File invece vengono memorizzati nel seguente modo:
+    // 
+    // FILE=<path assoluto del file>
+    // 
+
     fclose(archivetoshow);
     FILE* archivetoshow = fopen(workingdir, "r");
 
-    //fgets(buff2, PATH_MAX_LENGTH, archivetoshow);
     FILE* temp = NULL;
 
     while(fgets(buff2, PATH_MAX_LENGTH, archivetoshow) != NULL) {
@@ -298,7 +367,6 @@ void extractBackup(char* archive) {
         temp = fopen(token, "a+");
         printf("%s\n", token );
         if(temp == NULL) {
-          //perror(temp);
           exit(EXIT_FAILURE);
         }
 
