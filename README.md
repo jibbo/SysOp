@@ -47,7 +47,7 @@ Le funzionalità richieste per l'utility mkbkp sono le seguenti:
 
 	* Appena viene riconosciuto un file tramite la path si riconosce dove dovrà essere estratto; in seguito viene identificato il contenuto del file che sarà contenuto tra il 'new line' che segue la path e l'inizio del file successivo.
 
-	* 
+	* Se invece che un file viene riconosciuta una directory durante il parsing del file di backup allora viene creata una directory secondo la path indicata all'interno del file di backup.
 
 Equal [ ZEN ]
 =====
