@@ -22,11 +22,6 @@ int c_flag = 0;
 int x_flag = 0;
 int t_flag = 0;
 
-void manage();
-void printHelp();
-void makeBackup(char* path);
-void showBackupContent(char* archive);
-
 int main(int argc, char **argv) {
   int c;
   opterr = 0;
@@ -36,7 +31,7 @@ int main(int argc, char **argv) {
       case 'f':
         f_flag = 1;
         strcpy(filevalue, optarg);
-        strcpy(dirvalue, argv[optind]); 
+        //strcpy(dirvalue, argv[optind]); 
         break;
       case 'c':
         c_flag = 1;
@@ -80,8 +75,8 @@ void manage() {
     printf("You must use the -f flag to specify the archive you want to extract\n");
 
   } else if((x_flag == 1 && f_flag == 1) && (filevalue != NULL && dirvalue != NULL)) {
-    // Estrae l'archivio
     printf("Estraggo l'archivio: %s\n", filevalue);
+    extractBackup(filevalue);
 
   } else if(t_flag == 1 && (filevalue == NULL && dirvalue == NULL)) {
     printf("You must use the -f flag to specify the archive you want to analyze\n");
@@ -155,7 +150,6 @@ void makeBackup(char* path) {
 
       fprintf(backup, "\nDIR=");
       fprintf(backup, "%s", subpath);
-      fprintf(backup, "\n");
 
       makeBackup(subpath);
     } else {
@@ -181,12 +175,15 @@ void makeBackup(char* path) {
       temp -> read = fread(temp -> line, temp -> size, 1, temp -> file);
 
       // Scrive il delimitatore del file all'interno dell'archivio
-      fprintf(backup, "FILE=");
+      fprintf(backup, "\nFILE=");
       fprintf(backup, "%s", temp -> path);
       fprintf(backup, "\n");
 
       // Scrive il file appena letto all'interno dell'archivio
       fwrite(temp->line, 1, temp -> size, backup);
+
+      fprintf(backup, "\nENDFILE");
+
       fclose(temp -> file);
 
       free(temp -> line);
@@ -199,23 +196,121 @@ void makeBackup(char* path) {
   closedir(dir);
 }
 
+int startsWithPre(const char *pre, const char *str) {
+    size_t lenpre = strlen(pre),
+           lenstr = strlen(str);
+    return lenstr < lenpre ? 0 : strncmp(pre, str, lenpre) == 0;
+}
+
 void showBackupContent(char* archive) {
   char workingdir[PATH_MAX_LENGTH];
   getcwd(workingdir, PATH_MAX_LENGTH);
   strcat(workingdir, "/");
   strcat(workingdir, archive);
 
+  const char* pref = "FILE=";
+
   char buff[PATH_MAX_LENGTH];
+  char ch;
+  unsigned long chars;
 
   FILE* archivetoshow = fopen(workingdir, "r");
   if(archivetoshow == NULL) {
     perror(workingdir);
     exit(EXIT_FAILURE);
   } else {
-    while(fgets(buff, 256, archivetoshow) != NULL) {
-      printf("%s\n", buff);
+    while(fgets(buff, PATH_MAX_LENGTH, archivetoshow) != NULL) {
+      if(startsWithPre(pref, buff) == 1) {
+        printf("%s", buff);
+      }
     }
   }
-
   fclose(archivetoshow);
+}
+
+static void recursiveDirMake(const char *dir) {
+    char tmp[256];
+    char *p = NULL;
+    size_t len;
+
+    snprintf(tmp, sizeof (tmp), "%s", dir);
+    len = strlen(tmp);
+    if (tmp[len - 1] == '/')
+        tmp[len - 1] = 0;
+    for (p = tmp + 1; *p; p++)
+        if (*p == '/') {
+
+            *p = 0;
+            mkdir(tmp, 0777);
+            *p = '/';
+        }
+    mkdir(tmp, 0777);
+}
+
+void extractBackup(char* archive) {
+  char workingdir[PATH_MAX_LENGTH];
+  getcwd(workingdir, PATH_MAX_LENGTH);
+  strcat(workingdir, "/");
+  strcat(workingdir, archive);
+
+  const char* pref = "FILE=";
+
+  char buff[PATH_MAX_LENGTH];
+  char buff2[PATH_MAX_LENGTH];
+
+  char ch;
+  unsigned long chars;
+
+  FILE* archivetoshow = fopen(workingdir, "r");
+  if(archivetoshow == NULL) {
+    perror(workingdir);
+    exit(EXIT_FAILURE);
+  } else {
+
+    while(fgets(buff, PATH_MAX_LENGTH, archivetoshow) != NULL) {
+      FILE* temp = NULL;
+      if(startsWithPre("DIR=", buff) == 1) {
+        char *tokenDir;
+        char *search = "=";
+
+        tokenDir = strtok(buff, search);
+        tokenDir = strtok(NULL, search);
+        recursiveDirMake(tokenDir);
+      }
+    }
+
+    fclose(archivetoshow);
+    FILE* archivetoshow = fopen(workingdir, "r");
+
+    //fgets(buff2, PATH_MAX_LENGTH, archivetoshow);
+    FILE* temp = NULL;
+
+    while(fgets(buff2, PATH_MAX_LENGTH, archivetoshow) != NULL) {
+      if(startsWithPre(pref, buff2) == 1) {
+        printf("%s", buff2);
+        char *token;
+        char *search = "=";
+
+        token = strtok(buff2, search);
+        token = strtok(NULL, search);
+
+        //è un file
+        temp = fopen(token, "a+");
+        printf("%s\n", token );
+        if(temp == NULL) {
+          //perror(temp);
+          exit(EXIT_FAILURE);
+        }
+
+      } else if((int)strncmp(buff2, "ENDFILE", 7) == 0) {
+          fclose(temp);
+          FILE* temp = NULL;
+      } else if(startsWithPre("DIR=", buff2)) { 
+          continue;
+      } else {
+          fprintf(temp, "%s", buff2);
+      }
+    }
+    fclose(archivetoshow); 
+  } 
 }

@@ -18,6 +18,9 @@
 void manage();
 void printHelp();
 void makeBackup(char* path);
+int startsWithPre(const char *pre, const char *str);
 void showBackupContent(char* archive);
+static void recursiveDirMake(const char *dir);
+void extractBackup(char *archive);
 
 #endif
