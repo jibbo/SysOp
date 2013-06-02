@@ -38,6 +38,9 @@ int t_flag = 0;
 int main(int argc, char **argv) {
 	int c;
 	opterr = 0;
+
+	openlog(argv[0], LOG_CONS || LOG_PID, LOG_LOCAL0);
+
 	while ((c = getopt (argc, argv, "f:xct:")) != -1) {
     switch (c) {
       case 'f':
@@ -59,61 +62,69 @@ int main(int argc, char **argv) {
         printHelp();
         exit(EXIT_FAILURE);
     }
-
-    checkInput();
+    checkInput(optind, argc, argv);
   }
   return 0;
 }
 
-int checkInput() {
+void checkInput(int opt_index, int argc, char** targets) {
+
+	FILE *tempfile;
+
+	// 
+	// Visualizzazione del contenuto di un archivio
+	// 
 	if(t_flag == 1) {
 		if(c_flag == 1 || x_flag == 1 || f_flag == 1) {
 			printf("Errore nell'utilizzo dei parametri\n");
-			return 10;
 		} else if (t_value == NULL) {
 			printf("Non è stato specificato un archivio\n");
-			return 11;
 		} else {
 			printf("Visualizzo il contenuto archivio: %s\n", optarg);
-			return 0;
+			if(tempfile = fopen(f_value, "r")) {
+				extractBackup(tempfile);
+			}
 		}
 	}
 
+	// 
+	// Estrazione di un archivio
+	// 
 	if(x_flag == 1) {
 		if(f_flag == 0) {
 			printf("Errore nell'utilizzo dei parametri\n");
-			return 21;
 		} else if (f_value == NULL) {
 			printf("Non è stato specificato un archivio\n");
-			return 22;
 		} else if (c_flag == 1){
 			printf("\n");
-			return 23;
 		} else {
 			printf("Estrazione archivio\n");
-			return 1;			
+			if(tempfile = fopen(f_value, "r")) {
+				extractBackup(tempfile);
+			} else {
+				printf("File non trovato\n");
+			}	
 		}
 	}
 
+	// 
+	// Creazione di un nuovo archivio
+	// 
 	if(c_flag == 1) {
 		if(f_flag == 0){
 			printf("Errore nell'utilizzo dei parametri\n");
-			return 31;
 		} else if (f_value == NULL) {
 			printf("Non è stato specificato un archivio\n");
-			return 32;
 		} else {
 			printf("Compressione archivio\n");
-			return 2;
+			createBackup();
 		}
 	}
 
 	if(f_flag == 1) {
 		printf("Non è stato specificato un archivio\n");
-		return 40;
 	} else {
 		printHelp();
-		return 50;
 	}
 }
 
@@ -123,25 +134,6 @@ void printHelp() {
 	printf("\n\t -c to create a new archive");
 	printf("\n\t -x to extract an archive in the current directory");
 	printf("\n\t -t to display the content of an archive\n");
-}
-
-void manageBackup(int opt_index, int argc, char** targets) {
-	int checkexec = checkInput();
-	int i = 0;
-	char * cmp;
-	FILE *backup;
-
-	if(checkexec >= 10) {
-		printf("Errore nell'input\n");
-		exit(EXIT_FAILURE);
-	} else if(checkexec == 0) {
-		// Apre il file di backup
-
-	} else if(checkexec == 1) {
-
-	} else if (checkexec == 2) {
-
-	}
 }
 
 void createBackup(char* path) {
@@ -159,7 +151,7 @@ void createBackup(char* path) {
 	// Restituisce un puntatore ad un oggetto di tipo DIR in caso di successo e NULL in caso di errore.
 	// Inoltre posiziona lo stream sulla prima voce contenuta nella directory.
 	if ((dir = opendir(path)) == NULL) { 
-	  printf("scanworkingdir: can't open %s\n", path);
+	  printf("Non è stato possibile aprire la cartella %s\n", path);
 	  return;
 	}
 
@@ -239,4 +231,12 @@ void createBackup(char* path) {
 		fclose(backup);
 	}
 	closedir(dir);
+}
+
+void extractBackup(FILE* bkp)  {
+	
+}
+
+void showBackupContent(FILE* bkp) {
+	
 }
