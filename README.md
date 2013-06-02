@@ -13,13 +13,23 @@ Mkbkp [ PERANTONI ]
 Le funzionalità richieste per l'utility mkbkp sono le seguenti:
 
 - Creare un'archivio per salvare file e directory che vengono passati come parametri, è previsto l'utilizzo di diversi flag per identificare le diverse funzionalità dell'applicazione:
-	* -f <archivio> 
+	* -f <archivio> viene utilizzato in concomitanza con le altre opzioni che seguono. Permette di speficiare l'archivio che dovrà essere creato, estratto o ispezionato.
 
 	* -c permette di creare un archivio. Devono essere passati come parametri il nome dell'archivio da creare (con relativa estensione, ad es: file.bkp); se l'estensione non viene specificata verrà comunque aggiunta automaticamente. Viene assunto che durante la creazione dell'archivio lo stesso venga creato nella cartella corrente di lavoro, cioè quella da dove viene eseguita l'utlity.
 
 	* -x permette di estrarre un archivio nella directory corrente. Per utilizzare questa funzionalità oltre al flag -x deve essere utilizzato il flag -f per specificare il nome dell'archivio da estrarre.
 
-	* -t permette di visualizzare i file contenuti all'interno di un archivio. COme per le opzioni precedenti deve essere utilizatto in coppia con il flag -f per specificare di quale archivio si vuole visualizzare il contenuto.
+	* -t permette di visualizzare i file contenuti all'interno di un archivio. Come per le opzioni precedenti deve essere utilizatto in coppia con il flag -f per specificare di quale archivio si vuole visualizzare il contenuto.
+
+- Attraverso l'utilizzo della syscall getopt() vengono presi in input i flag utilizzati dall'utente (e relativi parametri), successivamente vengono effettuati diversi controlli sugli stessi:
+
+	* All'attivazione tramite la syscall getopt() di ognuno dei flag messi a disposizione dall'utility vengono utilizzate delle variabili per poter riconoscere che un determinato flag è stato attivato.
+
+	* In questo modo è possibile eseguire un controllo specifico sui parametri che sono stati inseriti dall'utente e visualizzare i relativi messaggi di errore.
+
+- La creazione di un'archivio viene gestita nel seguente modo:
+
+	* 
 
 Equal [ ZEN ]
 =====
