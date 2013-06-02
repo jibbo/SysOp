@@ -148,3 +148,31 @@ Examples:
 
 Plive [ DE FRANCESCO ]
 =====
+
+[Introduzione]
+Il comando plive e' un utility che mostra i processi in uso sulla macchina ordinati per utilizzo di cpu e filtrati da un numero arbitrario N che viene scelto dall'utente all'avvio. Inoltre l'utente puo' modificare l'intervallo di tempo in cui il programma aggiorna la lista.
+
+[La nostra soluzione]
+L'implementazione di un utility simile alla top ci ha fatto domandare innanzitutto in che modo potevamo ottenere dal S.O i processi attualmente attivi sulla macchina e questo ci ha portato a scoprire lo pseudo-filesystem contenuto nella cartella /proc/. Infatti dentro questa directory possiamo trovare delle sottocartelle che hanno per nome il PID dei processi in esecuzione sulla macchina, quindi ci rimaneva il problema di come calcolare la cpu effettivamente utilizzata dalla cpu trovare tutte le altre informazioni che ci servivano quali parent-id, nome del processo e qualcosa per calcolare la cpu utilizzata dal processo.
+Abbiamo notato che dentro ogni cartella di /proc/ c'e un file chiamato "stat" che contiene praticamente tutte le proprieta' su quel determinato processo e con questo abbiamo avuto tutte le informazioni necesserie ad iniziare a programmare.
+All'inizio abbiamo avuto qualche difficolta' a causa del linguaggio C a causa del suo essere a piu' basso livello dei linguaggi di porgrammazione a cui siamo abituati ma siamo riusciti a superarle tutte.
+L'unica cosa che ancora adesso ci lascia un po' perplessi e' il calcolo della cpu utilizzata da un processo poiche' abbiamo provato le seguenti formule:
+
+	((tempo del processo in kernel mode letto adesso + tempo del processo il user mode letto adesso)-(tempo del processo in kernel mode + tempo del processo il user mode))
+	/(tempo totale trascorso letto adesso - tempo totale trascorso letto prima)
+
+Ma il valore che veniva fuori ci sembrava troppo piccolo per sembrare reale, quindi abbiamo provato con la stessa foruma di prima moltiplicando il numeratore * 100 poiche' delle varie unita' di misura ma ancora ci sembrava troppo discostante dal valore finale. Infine abbiamo optato per:
+
+	(tempo del processo in user mode letto adesso - tempo del processo in user mode letto prima) / 
+		(il numero di secondi che impieghiamo per fare il refresh)
+
+Questo ancora non e' affidabile quanto quello del comando top ma sembra quello che ci si avvicina di piu'.
+
+[Uso]
+
+	./plive -n <numero dei processi che vogliamo vedere>
+
+oppure
+	./plive 
+	
+per vedere semplicemente i primi 10 numeri.
