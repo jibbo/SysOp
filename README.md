@@ -27,19 +27,27 @@ Le funzionalità richieste per l'utility mkbkp sono le seguenti:
 
 	* In questo modo è possibile eseguire un controllo specifico sui parametri che sono stati inseriti dall'utente e visualizzare i relativi messaggi di errore.
 
-- La creazione di un'archivio viene gestita nel seguente modo:
+- La creazione di un archivio viene gestita nel seguente modo:
 
 	* Per prima cosa viene letta la directory corrente dalla quale è stata eseguita l'utility: è stato assunto che il backup venga creato in quella directory.
 
 	* Successivamente l'utility inizia a leggere la cartella di cui fare il backup passata in inpute e vengono gestiti due casi diversi:
 
-		* Se l'elemento corrente che viene letto è una cartella allora viene chiamata ricorsivamente la funzione di creazione del backup così, in questo modo, l'utility entra nella directory appena letta e può effettuare il backup al suo interno.
+		* Se l'elemento corrente che viene letto è una cartella allora viene chiamata ricorsivamente la funzione di creazione del backup (passando come parametro la directory appena trovata) così, in questo modo, l'utility entra nella directory appena letta e può effettuare il backup al suo interno.
 
 		* Se l'elemento corrente che viene letto è invece un file allora viene letto ed aggiunto al file di backup in questo modo:
 
 			* Prima dell'inizio dei dati di un file all'interno del file di backup viene aggiunta una linea che contiene il path del file; verrà utilizzata per estrarre il file correttamente e per mostrare il contenuto dell'archivio in modo semplice, dato che si tratterà solo di identificare le righe del file che identificano un file.
 
 		* Se non ci sono più file l'esecuzione della funzione di creazione del backup termina, altrimenti vengono eseguite le medesime operazioni ricorsivamente fino a quando non sono state passate tutte le sottodirectory e tutti i file presenti all'interno della cartella presa in input.
+
+- L'estrazione di un'archivio viene gestita nel seguente modo:
+
+	* Viene effettuato un parsing del file di backup, ogni file viene identificato grazie alla stringa che viene scritta prima di esso e che contiene, come già anticipato, la path del file.
+
+	* Appena viene riconosciuto un file tramite la path si riconosce dove dovrà essere estratto; in seguito viene identificato il contenuto del file che sarà contenuto tra il 'new line' che segue la path e l'inizio del file successivo.
+
+	* 
 
 Equal [ ZEN ]
 =====
