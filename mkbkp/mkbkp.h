@@ -15,10 +15,9 @@
 #include <limits.h>
 #include <string.h>
 
-void checkInput(int opt_index, int argc, char** targets);
+void manage();
 void printHelp();
-void createBackup(char* path);
-void extractBackup(FILE* bkp);
-void showBackupContent(FILE* bkp);
+void makeBackup(char* path);
+void showBackupContent(char* archive);
 
 #endif

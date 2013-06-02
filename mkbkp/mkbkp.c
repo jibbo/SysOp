@@ -1,16 +1,4 @@
-#include <ctype.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <dirent.h>
-#include <sys/dir.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <fcntl.h>
-#include <syslog.h>
-#include <limits.h>
-#include <string.h>
+#include "mkbkp.h"
 
 #define PATH_MAX_LENGTH 256
 
@@ -48,7 +36,7 @@ int main(int argc, char **argv) {
       case 'f':
         f_flag = 1;
         strcpy(filevalue, optarg);
-        //strcpy(dirvalue, argv[optind]); 
+        strcpy(dirvalue, argv[optind]); 
         break;
       case 'c':
         c_flag = 1;
@@ -224,7 +212,7 @@ void showBackupContent(char* archive) {
     perror(workingdir);
     exit(EXIT_FAILURE);
   } else {
-    while(fgets(buff, PATH_MAX_LENGTH, archivetoshow) != NULL) {
+    while(fgets(buff, 256, archivetoshow) != NULL) {
       printf("%s\n", buff);
     }
   }
