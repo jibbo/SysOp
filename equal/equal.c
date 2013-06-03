@@ -249,7 +249,7 @@ int empty_directory(char * path) {
     return 1;
 }
 
-int are_equals_directories(char path1[256] , char path2[256]) {
+int are_equals_directories(char path1[MAX_PATH_LENGHT] , char path2[MAX_PATH_LENGHT]) {
 
     // Verifico se entrambe le directories sono vuote..
     if (strcmp(path1,path2) == 0 || (empty_directory(path1) && empty_directory(path2))) {
@@ -267,8 +267,8 @@ int are_equals_directories(char path1[256] , char path2[256]) {
     int is_dir1, is_dir2;
     int equal_dir = 1;
 
-    char completePath1[256];    // Buffer che rappresenta il primo path
-    char completePath2[256];    // Buffer che rappresenta il secondo path
+    char completePath1[MAX_PATH_LENGHT];    // Buffer che rappresenta il primo path
+    char completePath2[MAX_PATH_LENGHT];    // Buffer che rappresenta il secondo path
 
     dir1 = opendir(path1);
     if (dir1 == NULL) {
@@ -452,8 +452,8 @@ void dirwalk(char * path1, char * path2, int indent_limit, char symb)
     int is_dir1, is_dir2;
 
     // A differenza di path1 e path2 i completePath contengono i nomi dei files, mentre i paths solo la cartella di livello superiore.
-    char completePath1[256];    // Buffer nel quale memorizzo il percorso relativo al primo file
-    char completePath2[256];    // Buffer nel quale memorizzo il percorso relativo al secondo file
+    char completePath1[MAX_PATH_LENGHT];    // Buffer nel quale memorizzo il percorso relativo al primo file
+    char completePath2[MAX_PATH_LENGHT];    // Buffer nel quale memorizzo il percorso relativo al secondo file
 
     int indent_tab = 0; // serve per dare una giusta indentazione al momento della stampa in console.
     int found = 0;      // serve per vedere se il file1 è stato trovato all'interno del path2.
