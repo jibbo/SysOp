@@ -10,96 +10,96 @@
 
 #include "plive.h"
 
-int main(int argc, char **argv) 
-{
-    openlog(argv[0], LOG_CONS || LOG_PID, LOG_LOCAL0);
+        int main(int argc, char **argv) 
+        {
+            openlog(argv[0], LOG_CONS || LOG_PID, LOG_LOCAL0);
 
-    syslog(LOG_INFO, "plive started: %s", argv[0]);
+            syslog(LOG_INFO, "plive started: %s", argv[0]);
 
-    if(checkflag(argc,argv)!=-1) 
-    {
-         initscr();
+            if(checkflag(argc,argv)!=-1) 
+            {
+               initscr();
 
-         syslog(LOG_INFO, "called plive with: %d", n);
+               syslog(LOG_INFO, "called plive with: %d", n);
 
-         signal(SIGSEGV, errors);
+               signal(SIGSEGV, errors);
 
 
          //operazioni da fare per avere
          //tutti i dati da processare
-         int numProcOld=numberOfProcess();
+               int numProcOld=numberOfProcess();
 
-         PROC *old_proc = (PROC *) malloc(sizeof(PROC)*numProcOld);
-         numProcOld=listOfProcess(old_proc,numProcOld);
+               PROC *old_proc = (PROC *) malloc(sizeof(PROC)*numProcOld);
+               numProcOld=listOfProcess(old_proc,numProcOld);
          //float timeTotalBefore= getTotalTime();
-         qsort(old_proc, numProcOld, sizeof(PROC), cmpPID);
-         
+               qsort(old_proc, numProcOld, sizeof(PROC), cmpPID);
+               
           //creo il thread che aspetta 
          //l'input dell'utente
-         pthread_t look;
-         pthread_create(&look, NULL, updateVariables, NULL);
+               pthread_t look;
+               pthread_create(&look, NULL, updateVariables, NULL);
 
-         int actualNumProc=0;
-         while(1)
-         {
-            sleep(seconds);
-            
+               int actualNumProc=0;
+               while(1)
+               {
+                sleep(seconds);
+                
             //leggo i nuovi dati
-            actualNumProc=numberOfProcess()+1;
-            PROC *proc = (PROC *) malloc(sizeof(PROC)*actualNumProc);
-            actualNumProc=listOfProcess(proc,actualNumProc);
-            qsort(proc, actualNumProc, sizeof(PROC), cmpPID);
-            
-            
-            MINI_PROC out[n];
+                actualNumProc=numberOfProcess()+1;
+                PROC *proc = (PROC *) malloc(sizeof(PROC)*actualNumProc);
+                actualNumProc=listOfProcess(proc,actualNumProc);
+                qsort(proc, actualNumProc, sizeof(PROC), cmpPID);
+                
+                
+                MINI_PROC out[n];
             //float timeTotalAfter=getTotalTime();
-            int nloc=topTimes(old_proc,proc,out,numProcOld,actualNumProc);
-            
+                int nloc=topTimes(old_proc,proc,out,numProcOld,actualNumProc);
+                
             //pulisco e stampo a video
-            clear();
-            stmpNProc(out,nloc);
+                clear();
+                stmpNProc(out,nloc);
 
             //Aggiorno i dati per il prossimo "giro"
-            copyProc(old_proc,proc,nloc);
-            numProcOld=nloc;
+                copyProc(old_proc,proc,nloc);
+                numProcOld=nloc;
+            }
+            endwin();
         }
-        endwin();
+        syslog(LOG_INFO, "plive ended", n);
+        closelog();
+        return 0;
     }
-    syslog(LOG_INFO, "plive ended", n);
-    closelog();
-    return 0;
-}
 
 //funzione che viene chiamato quando 
 //qualcosa di brutto acade al 
 //nostro programma (e.g. Segmentation fault)
-void errors(int sig) {
-  endwin();
-  void *array[10];
-  size_t size;
+    void errors(int sig) {
+      endwin();
+      void *array[10];
+      size_t size;
 
   // get void*'s for all entries on the stack
-  size = backtrace(array, 10);
+      size = backtrace(array, 10);
 
   // print out all the frames to stderr
-  syslog(LOG_ERR, " program exited because of signal %d", sig);
+      syslog(LOG_ERR, " program exited because of signal %d", sig);
   //backtrace_symbols_fd(array, size, 2);
-  closelog();
-  exit(EXIT_FAILURE);
-}
+      closelog();
+      exit(EXIT_FAILURE);
+  }
 
 //stampa i processi interessati
 //il numero e' definito da 
-void stmpNProc(MINI_PROC *proc,int len)
-{
+  void stmpNProc(MINI_PROC *proc,int len)
+  {
     int i;
     for(i=0; i<len; i++)
     {
         //printf("%d\t%s\n",proc[i].pid,proc[i].name);
-         printw("pid: %d  \tppid: %d  \tname: %s  \tcpu:%2.2f\n",proc[i].pid,proc[i].ppid,
-            proc[i].name,proc[i].cpu);
-    }
-    refresh();
+       printw("pid: %d  \tppid: %d  \tname: %s  \tcpu:%2.2f\n",proc[i].pid,proc[i].ppid,
+        proc[i].name,proc[i].cpu);
+   }
+   refresh();
 }
 
 //Function that set the number of
@@ -138,10 +138,10 @@ int checkflag(int argc, char **argv)
             fprintf (stderr,"Unknown option character `\\x%x'.\n",optopt);
         }
         
-         return -1;
+        return -1;
         //case for nothing passed as option
         default:
-            return 1;
+        return 1;
     }
 }
 
@@ -184,9 +184,9 @@ int  numberOfProcess()
       //sicuro che siano pid di processi  
       if(dir->d_name[0]>='0' && dir->d_name[0]<='9')
         nt++;
-    }
-    closedir(d);
-    return nt;
+}
+closedir(d);
+return nt;
 }
 
 //rimuove le parentesi dal nome dei processi
@@ -247,18 +247,18 @@ int listOfProcess(PROC *proc, int len)
 
 //ritorna per quanto tempo e' stata utilizzata la cpu
 float getTotalTime(){
-   FILE *f= fopen("/proc/stat","r"); 
-   float out=0;
-   if(f)
-   {
-        unsigned long user=0,nice=0,sys=0;
-        char cpu[10];
-        fscanf(f,"%s %lu %lu %lu",cpu,&user,&nice,&sys);
+ FILE *f= fopen("/proc/stat","r"); 
+ float out=0;
+ if(f)
+ {
+    unsigned long user=0,nice=0,sys=0;
+    char cpu[10];
+    fscanf(f,"%s %lu %lu %lu",cpu,&user,&nice,&sys);
         //*out=user+nice+sys;
-        out=(float)user+sys;
-        fclose(f);
-   }
-   return out;
+    out=(float)user+sys;
+    fclose(f);
+}
+return out;
 }
 
 //funzione per confrontare due
@@ -293,7 +293,10 @@ int topTimes(PROC* before,PROC* after, MINI_PROC* out,int len1,int len2)
         maxlen=len1;
         first=0;
     }
-    MINI_PROC tmp[maxlen];
+    if(first)
+        MINI_PROC tmp[maxlen];
+    else
+        MINI_PROC tmp[min];
     int i=0;
 
     for(i=0;i<minlen;i++)
@@ -314,15 +317,15 @@ int topTimes(PROC* before,PROC* after, MINI_PROC* out,int len1,int len2)
             tmp[i].ppid=after[i].ppid;
             strcpy(tmp[i].name,after[i].name);
             //tmp[i].cpu=after[i].utime/seconds;
-            tmp[i].cpu=(float)after[i].utime/100.0;
+            tmp[i].cpu=(float)after[i].utime;
         }
-        else
+        /*else
         {
             tmp[i].pid=before[i].pid;
             tmp[i].ppid=before[i].ppid;
             strcpy(tmp[i].name,before[i].name);
-            tmp[i].cpu=0;
-        }
+            tmp[i].cpu=-1;
+        }*/
         
     }
     //ordino l'array per utilizzo di cpu in modo crescente
@@ -330,8 +333,12 @@ int topTimes(PROC* before,PROC* after, MINI_PROC* out,int len1,int len2)
     
     //questa e' per controllare che
     // l'utente non chieda piu' processi di
-    //quelli  presenti nel sistema 
-    int nloc = (n>maxlen) ? maxlen:n;
+    //quelli  presenti nel sistema
+    int nloc;
+    if(first) 
+        nloc = (n>maxlen) ? maxlen:n;
+    else
+        nloc = (n>minlen) ? minlen:n;
 
     //prendo i primi n processi
     for(i=0;i<n;i++)
