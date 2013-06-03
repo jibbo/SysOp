@@ -67,11 +67,9 @@ int main(int argc, char **argv) {
         syslog(LOG_INFO, "Flag not available");
         exit(EXIT_FAILURE);
     }
-    
   }
 
   manage();
-
   return 0;
 }
 
@@ -89,13 +87,18 @@ int main(int argc, char **argv) {
 
 void manage() {
 
+  printf("T: %i X: %i C: %i\n", t_flag, x_flag, c_flag);
+
   // T_FLAG
   if(t_flag == 1) {
     if(f_flag == 1 || x_flag == 1 || c_flag == 1) {
+      printf("-t flag must be used without any flags\n");
       syslog(LOG_INFO, "-t flag must be used without any flags");
     } else if(t_value == NULL) {
+      printf("-t requires a parameter\n");
       syslog(LOG_INFO, "-t requires a parameter");
     } else {
+      printf("ready to show the archive content\n");
       syslog(LOG_INFO, "ready to show the archive content");
       showBackupContent(t_value);
     }
@@ -104,24 +107,31 @@ void manage() {
   // X_FLAG
   if(x_flag == 1) {
     if(f_flag == 1) {
-      syslog(LOG_INFO, "-x cannot be used without -f");
+      printf("ready for archive extraction\n");
+      syslog(LOG_INFO, "ready for archive extraction");
+      extractBackup(f_value);
     } else if(f_value == NULL) {
+      printf("the archive provided with the -f flag cannot be empty\n");
       syslog(LOG_INFO, "the archive provided with the -f flag cannot be empty");
     } else if(c_flag == 1) {
+      printf("-x and -c cannot be used together\n");
       syslog(LOG_INFO, "-x and -c cannot be used together");
     } else {
-      syslog(LOG_INFO, "ready for archive extraction");
-      extractBackup(t_value);
+      printf("-x cannot be used without -f\n");
+      syslog(LOG_INFO, "-x cannot be used without -f");
     }
   }
 
   // C_FLAG
   if(c_flag == 1) {
     if(f_flag == 0) {
+      printf("-f flag is not present\n");
       syslog(LOG_NOTICE, "-f flag is not present");
     } else if(f_value == NULL) {
-      syslog(LOG_NOTICE, "non target provided for the -f flag");
+      printf("no target provided for the -f flag\n");
+      syslog(LOG_NOTICE, "no target provided for the -f flag");
     } else {
+      printf("ready to backup the provided folder\n");
       syslog(LOG_INFO, "ready to backup the provided folder");
       makeBackup(f_value);
     }
@@ -129,7 +139,10 @@ void manage() {
 
   // F_FLAG
   if(f_flag == 1) {
-    syslog(LOG_INFO, "-t flag requires a parameter: <the archive> as *.bpk");
+    if(t_flag == 0 && x_flag == 0 && c_flag == 0) {
+      printf("-t flag requires a parameter: <the archive> as *.bpk\n");
+      syslog(LOG_INFO, "-t flag requires a parameter: <the archive> as *.bpk");
+    }
   }
 }
 
@@ -246,6 +259,7 @@ void makeBackup(char* path) {
   }
 
   closedir(dir);
+  syslog(LOG_INFO, "file written to the backup correctly");
 }
 
 int startsWithPre(const char *pre, const char *str) {
@@ -276,6 +290,7 @@ void showBackupContent(char* archive) {
     }
   }
   fclose(archivetoshow);
+  syslog(LOG_INFO, "utility showed content of the backup file correctly");
 }
 
 // Questo metodo viene utilizzato per creare le sottocartelle
@@ -388,5 +403,6 @@ void extractBackup(char* archive) {
       }
     }
     fclose(archivetoshow); 
-  } 
+  }
+  syslog(LOG_INFO, "backup file was extraced correctly");
 }
