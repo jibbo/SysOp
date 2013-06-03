@@ -23,15 +23,17 @@
 #include <signal.h>
 #include <syslog.h>
 
-//number of process show
+//numero dei processi da visualizzare di default
 int n=10; 
-//refresh interval
+
+//intervallo di tempo usato per
+//aggiornare la visualizzazione
+//di default
 int seconds=1; 
 
 //struct che rappresenta un processo 
-//contine solo i primi 13 dati contenuti
-//in /proc/pid/stat perche' sono i primi
-//utili.
+//contenuto in /proc/pid/stat
+//dove vengono salvati solo i dati utili al calcolo
 typedef struct process_t
 {
     int pid;
@@ -42,7 +44,8 @@ typedef struct process_t
 }PROC;
 
 //struct che rappresenta un processo 
-//contine solo i dati vermente utili 
+//contenuto in /proc/pid/stat
+//dove vengono salvati solo i dati utili alla visualizzazione
 typedef struct mini_process_t
 {
     int pid;
@@ -51,27 +54,25 @@ typedef struct mini_process_t
     float cpu;
 }MINI_PROC;
 
-//funzione che viene chiamato quando 
-//qualcosa di brutto acade al 
+//funzione che viene chiamata quando 
+//qualcosa di brutto accade al 
 //nostro programma (e.g. Segmentation fault)
 void errors(int sig);
 
 //stampa i processi interessati
-//il numero e' definito da 
 void stmpNProc(MINI_PROC *proc,int len);
 
-//Function that set the number of
-//procces that will be displayed
-//return -1 in case of error
+//funzione che fa un parsing delle opzioni dati al programma
+//quindi in posta il numero di processi da visualizzare
+//ritorna -1 nel caso di errori
 int checkflag(int argc, char **argv);
 
-//this is the function that is 
-//called by a thread to watch
-//user's input
+//funzione che viene usata da 
+//un thread per gestire l'input dell' utente.
 void *updateVariables();
 
-//return the number of all the process running
-//avoiding useless folder 
+//ritorna il numero di processi attivi sul sistema
+//evitando le cartelle che non hanno un PID
 int  numberOfProcess();
 
 //rimuove le parentesi dal nome dei processi
@@ -92,12 +93,12 @@ int cmpPID (const void * a, const void * b);
 //mini processi in base alla cpu utilizzata
 int cmpCPU (const void * a, const void * b);
 
-//funzione principale
-int topTimes(PROC* before,PROC* after, MINI_PROC* out,int len1,int len2);
+//questa funzione calcola la quantita' di cpu utilizzata da ogni processo
+//e genera l'array di processi da mostrare all'utente 
+int topTimes(PROC* before,PROC* after, MINI_PROC* out,int lenBefore,int lenAfter,float timeTotalBefore,float timeTotalAfter);
 
-//elimina il contenuto di old
-//e copia tutto il contenuto di last
-//in old
-void copyProc(PROC* old,PROC* last,int len2);
+//rimpiazza la vecchia lettura
+//con l'ultima
+void copyProc(PROC* before,PROC* last,int lenAfter);
 
 #endif
