@@ -1,19 +1,12 @@
-compile-equal:
-	cd equal && make; cd ../
-compile-mkbkp:
-	cd mkbkp && make; cd ../
-compile-plive:
-	cd plive && make; cd ../
+SUBDIRS = equal mkbkp plive
 
-all:
-	compile-equal
-	compile-mkbkp 
-	compile-plive
+all: $(SUBDIRS)
+
+$(SUBDIRS):
+	$(MAKE) -C $@
 
 install:
-	cd equal && make install && cd ../
-	cd mkbkp && make install && cd ../
-	cd plive && make install && cd ../
+	$(MAKE) install -C $@
 
 uninstall:
 	cd equal && make clean ; cd ../
