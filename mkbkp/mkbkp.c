@@ -184,17 +184,21 @@ void makeBackup(char* path) {
       continue;
     }
 
+    // Utilizza lo struct file per creare un nuovo file e di conseguenza memorizzare tutte le infomazioni su di esso
+    // Per prima cosa per alloco la quantità di memoria necessaria
     size_t length = strlen(path) + strlen(direntry -> d_name) + 2;
     char * concat = (char *) malloc(sizeof(char) * length);
     snprintf(concat, length, "%s/%s", path, direntry -> d_name);
     stat(concat, &stbuf);
 
-    // Legge la cartella corrente
+    // Legge la cartella corrente e concatena il nome del file
+    // alla path assoluta presa in input, così da avere il percorso completo
     getcwd(cwd, PATH_MAX_LENGTH);
     strcat(cwd, "/");
     strcat(cwd, filevalue);
 
     // Apro il file di backup in Append
+    // in questo modo posso concatenare i vari file che devo essere inseriti nel backup
     backup = fopen(cwd, "a+");
     if(backup == NULL) {
       perror(cwd);
@@ -204,7 +208,10 @@ void makeBackup(char* path) {
     // Bool che indica se è una directory
     is_dir = ((stbuf.st_mode & S_IFMT) == S_IFDIR);
 
-    // Se è una directory
+    // se viene rilevato che è una directory allora all'interno del file di backup
+    // viene utilizzato un divisore che indica che la stringa che segue a DIR= è
+    // la path di una directory che dovrà essere ricreata all'estrazione del file
+    // di backup
     if (is_dir) {
       strcpy(subpath, path);
       strcat(subpath, "/");
@@ -215,20 +222,34 @@ void makeBackup(char* path) {
 
       makeBackup(subpath);
     } else {
-      // allora è un file
+      // Nel caso contrario, cioè is_dir è falso, l'elemento analizzato è un file
+      // e si procede all'aggiunta dello stesso al file di backup
+
+      // Questa variabile è quella che contiene il file, viene chiusto ed inizializzato nuovamente
+      // ad ogni ciclo while, in questo modo ogni volta viene aggiunto un nuovo file
       str_file* temp;
 
+      // A questo punto viene allocato lo spazio di memoria necessario per il file
+      // che viene calcolato in basse alla dimensione di str_file
       temp = (str_file* ) malloc(sizeof(str_file));
+
+      // Concatena la path assoluta al nome del file in modo da avere il pathname
+      // completo. In questo modo possiamo salvare all'interno dell'archivio la posizione del file
+      // in modo da avere già pronto il percorso per l'estrazione; inoltre questo permette di identificare
+      // il file all'interno dell'archivio
       strcpy(temp -> path, path);
       strcat(temp -> path, "/");
       strcat(temp -> path, direntry -> d_name);
 
+      // Apre il file che contiene tutte informazioni già fornite sopra, inserite nello struct
       temp -> file = fopen(temp -> path, "rb");
       if(temp -> file == NULL) {
         perror(temp -> path);
         exit(EXIT_FAILURE);
       }
 
+      // Calcolo la dimensione del file e la memorizzo all'interno del relativo
+      // campo nello struct
       fseek(temp -> file, 0, SEEK_END);
       temp -> size = ftell(temp -> file);
       fseek(temp -> file, 0, SEEK_SET);
@@ -244,6 +265,7 @@ void makeBackup(char* path) {
       // Scrive il file appena letto all'interno dell'archivio
       fwrite(temp->line, 1, temp -> size, backup);
 
+      // Scrive all'interno del file di backup un divisore che identifica la fine di un file
       fprintf(backup, "\nENDFILE");
 
       fclose(temp -> file);
@@ -259,11 +281,25 @@ void makeBackup(char* path) {
   syslog(LOG_INFO, "file written to the backup correctly");
 }
 
+// Funzione che controlla se una determinata stringa
+// inizia con un prefisso, const char* pre, passato in input
+// la stringa da controllare viene presa in input da un'altra
+// variabile chiamata const char* str
+// Ritorna in output 1 se la condizione è vera
+// 0 altrimenti
+
 int startsWithPre(const char *pre, const char *str) {
     size_t lenpre = strlen(pre),
            lenstr = strlen(str);
     return lenstr < lenpre ? 0 : strncmp(pre, str, lenpre) == 0;
 }
+
+// Funzione utilizzata per mostrare il contenuto di un archivio
+// Prende in inpute il path dell'archivio da analizzare, successivamente
+// crea un file con il path passato in input, lo analizza, e stampa a video i file trovati
+// La presenza di un file all'interno di un archivio viene rilevata in questo modo:
+//  Viene analizzata ogni riga di del file, se quella riga inizia con il separatore
+//  FILE= allora quella riga conterrà la path di un file da visualizzare in output
 
 void showBackupContent(char* archive) {
   char workingdir[PATH_MAX_LENGTH];
@@ -291,7 +327,8 @@ void showBackupContent(char* archive) {
 }
 
 // Questo metodo viene utilizzato per creare le sottocartelle
-// ricorsivamente quando viene estratto un archivio
+// ricorsivamente quando viene estratto un archivio.
+// Questa funzione è stata ricavata da Internet.
 
 static void recursiveDirMake(const char *dir) {
     char tmp[256];
