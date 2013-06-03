@@ -86,9 +86,6 @@ int main(int argc, char **argv) {
 // se viene passato input solo il flag -f viene loggato l'errore, il flag non può essere utilizzato da solo
 
 void manage() {
-
-  printf("T: %i X: %i C: %i\n", t_flag, x_flag, c_flag);
-
   // T_FLAG
   if(t_flag == 1) {
     if(f_flag == 1 || x_flag == 1 || c_flag == 1) {
