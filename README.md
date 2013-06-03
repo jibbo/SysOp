@@ -7,19 +7,30 @@ Per quanto riguarda la registrazione di tutte le attività (errori e messaggi di
 Questa scelta è dovuta al fatto che, con questo demone di sistema messo a disposizione da unix, i messaggi contengono la data e l'ora di quando sono stati invocati, l'user id e il PID del processo che ha chimato la system call.
 Inoltre è possibile differenziare messaggi di errore da messaggi di warning, di informazione oppure di critical conditions.
 
+[ Gestione dettagli files/dir ]
+
+All'interno delle utility utilizziamo le funzionalità messe a disposizione dalla libreria dirent.h e stat.h per ottenere
+informazioni su files e directory che devono essere analizzate. 
+
 Mkbkp [ PERANTONI ]
 ====
 
 Le funzionalità richieste per l'utility mkbkp sono le seguenti:
 
 - Creare un'archivio per salvare file e directory che vengono passati come parametri, è previsto l'utilizzo di diversi flag per identificare le diverse funzionalità dell'applicazione:
-	* -f <archivio> viene utilizzato in concomitanza con le altre opzioni che seguono. Permette di speficiare l'archivio che dovrà essere creato, estratto o ispezionato.
+	* -f <archivio> viene utilizzato in concomitanza con le altre opzioni che seguono. Permette di speficiare l'archivio che dovrà essere creato o estratto.
 
-	* -c permette di creare un archivio. Devono essere passati come parametri il nome dell'archivio da creare (con relativa estensione, ad es: file.bkp); se l'estensione non viene specificata verrà comunque aggiunta automaticamente. Viene assunto che durante la creazione dell'archivio lo stesso venga creato nella cartella corrente di lavoro, cioè quella da dove viene eseguita l'utlity.
+	* -c permette di creare un archivio. Devono essere passati come parametri il nome dell'archivio da creare (con relativa estensione, ad es: file.bkp); se l'estensione non viene specificata verrà comunque aggiunta automaticamente. Viene assunto che durante la creazione dell'archivio lo stesso venga creato nella cartella corrente di lavoro, cioè quella da dove viene eseguita l'utility.
+
+		> ./mkbkp -c - f <file>.bkp /folder di cui fare il backup
 
 	* -x permette di estrarre un archivio nella directory corrente. Per utilizzare questa funzionalità oltre al flag -x deve essere utilizzato il flag -f per specificare il nome dell'archivio da estrarre.
 
-	* -t permette di visualizzare i file contenuti all'interno di un archivio. Come per le opzioni precedenti deve essere utilizatto in coppia con il flag -f per specificare di quale archivio si vuole visualizzare il contenuto.
+		> ./mkbkp -x -f <file>.bkp
+
+	* -t permette di visualizzare i file contenuti all'interno di un archivio.
+
+		> ./mkbkp - t <file>.bkp
 
 - Attraverso l'utilizzo della syscall getopt() vengono presi in input i flag utilizzati dall'utente (e relativi parametri), successivamente vengono effettuati diversi controlli sugli stessi:
 
@@ -39,8 +50,7 @@ Le funzionalità richieste per l'utility mkbkp sono le seguenti:
 
 			* Abbiamo implementato un separatore che identifica i singoli file e aiuta anche nella fase di estrazione dello stesso, consiste in:
 
-				- FILE=<path assoluto del file>
-    			  \nENDFILE	 
+				- FILE = path assoluto del file \nENDFILE	 
 
 		* Se non ci sono più file l'esecuzione della funzione di creazione del backup termina, altrimenti vengono eseguite le medesime operazioni ricorsivamente fino a quando non sono state passate tutte le sottodirectory e tutti i file presenti all'interno della cartella presa in input.
 
@@ -51,6 +61,12 @@ Le funzionalità richieste per l'utility mkbkp sono le seguenti:
 	* Appena viene riconosciuto un file tramite la path si riconosce dove dovrà essere estratto; in seguito viene identificato il contenuto del file che sarà contenuto tra il 'new line' che segue la path e l'inizio del file successivo.
 
 	* Se invece che un file viene riconosciuta una directory durante il parsing del file di backup allora viene creata una directory secondo la path indicata all'interno del file di backup.
+
+- L'utility presenta alcune limitazioni:
+
+	* Nella creazione di un archivio di backup deve essere inserito il percorso assoluto della cartella della quale si vuole fare il backup
+	* L'archivio viene in ogni caso creato nella cartella corrente di lavoro, cioè quella da cui viene lanciata l'utility; la stessa cosa vale per l'estrazione
+	* L'utility si blocca se il file di backup contiene righe vuote, inoltre, i file contengono un punto di domanda alla fine dell'estensione
 
 Equal [ ZEN ]
 =====

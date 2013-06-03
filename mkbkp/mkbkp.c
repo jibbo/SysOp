@@ -36,6 +36,9 @@ int c_flag = 0;
 int x_flag = 0;
 int t_flag = 0;
 
+char *f_value = NULL;
+char *t_value = NULL;
+
 int main(int argc, char **argv) {
   int c;
   opterr = 0;
@@ -44,12 +47,11 @@ int main(int argc, char **argv) {
   openlog(argv[0], LOG_CONS || LOG_PID, LOG_LOCAL0);
   
   // Utilizzo la syscall getopt() per i diversi flag utilizzati dall'applicazione
-  while ((c = getopt (argc, argv, "f:cxt")) != -1) {
+  while ((c = getopt (argc, argv, "f:cxt:")) != -1) {
     switch (c) {
       case 'f':
         f_flag = 1;
-        strcpy(filevalue, optarg);
-        //strcpy(dirvalue, argv[optind]); 
+        f_value = optarg; 
         break;
       case 'c':
         c_flag = 1;
@@ -59,63 +61,88 @@ int main(int argc, char **argv) {
         break;
       case 't':
         t_flag = 1;
+        t_value = optarg;
         break;
-      case '?':
-        if (optopt == 'f') {
-          fprintf(stderr, "Option -%c requires the archive as an argument\n", optopt);
-        } else if (isprint (optopt)) {
-          fprintf(stderr, "Unknown option '-%c'\n", optopt);
-          printHelp();
-        } else {
-          fprintf(stderr, "Unknown option character '\\x%x'.\n", optopt);
-        }
-        return 1;
       default:
-        abort ();
+        syslog(LOG_INFO, "Flag not available");
+        exit(EXIT_FAILURE);
     }
-    manage();
   }
 
+  manage();
   return 0;
 }
 
-// Gestisco tutti i casi di input che posso ricevere dall'utente:
-// * se il flag -c è utilizzato ma sia il file che la directory sono nulli mostro che deve essere inserito un archivio
-//   utilizzando anche il flag -f
-// * se il flag -c e il flag -f sono a 1 ma non vengono inseriti nè un file nè una directory
-//   comunico all'utente che li deve inserire
-// * se viene utilizzato il flag -x per estrarre un archivio ma non viene specificato l'archivio allora
-//   viene visualizzato il relativo messaggio di errore
-// * se viene utilizzato il flag -x in concomitanza con il flag -f allora significa che l'utente ha utilizzato
-//   il primo dei due per segnalare di voler estrarre l'archivio passato come parametro utilizzando il flag -f
-// * se viene utilizzato il flag -t per visualizzare il contenuto di un archivio ma l'archivio non viene specificato
-//   come parametro mostro il relativo messaggio di errore
-// * infine, se vengono utilizzati sia il flag t ed il flag f allora eseguo il metodo che mostra
-//   il contenuto di un file di backup passato come parametro
+// Funzione che gestisce tutte le condizioni di input che può avere l'utility
+// se viene utilizzato il flag -t allora viene segnalato che il suddetto flag non può essere utilizzato insieme ad altri
+// infatti per mostrare il contenuto di un file bisogna eseguire: ./mkbkp -t <nomefile>.bkp
+
+// se viene utilizzato il flag -x avviene il medesimo controllo, con la differenza che viene controllato
+// che sia presente anche il flag -f perché quel flag serve ad indicare il file da estrarre
+
+// se viene utilizzato il flag -c vale la medesima condizione che è già stata illustrata per il flag -x
+// con la differenza che in questo caso viene esguito il backup di un file.
+
+// se viene passato input solo il flag -f viene loggato l'errore, il flag non può essere utilizzato da solo
 
 void manage() {
-  if(c_flag == 1 && (filevalue == NULL && dirvalue == NULL)) {
-    printf("You must use the -f flag to specify the archive you want to create\n");
+  // T_FLAG
+  if(t_flag == 1) {
+    if(f_flag == 1 || x_flag == 1 || c_flag == 1) {
+      printf("-t flag must be used without any flags\n");
+      syslog(LOG_INFO, "-t flag must be used without any flags");
+    } else if(t_value == NULL) {
+      printf("-t requires a parameter\n");
+      syslog(LOG_INFO, "-t requires a parameter");
+    } else {
+      printf("ready to show the archive content\n");
+      syslog(LOG_INFO, "ready to show the archive content");
+      showBackupContent(t_value);
+    }
+  }
 
-  } else if((c_flag == 1 && f_flag == 1) && (filevalue != NULL && dirvalue != NULL)) {
-    // Crea l'archivio
-    printf("Creo l'archivio chiamato: %s della cartella: %s\n", filevalue, dirvalue);
-    makeBackup(dirvalue);
-  } else if(x_flag == 1 && (filevalue == NULL && dirvalue == NULL)) {
-    printf("You must use the -f flag to specify the archive you want to extract\n");
+  // X_FLAG
+  if(x_flag == 1) {
+    if(f_flag == 1) {
+      printf("ready for archive extraction\n");
+      syslog(LOG_INFO, "ready for archive extraction");
+      extractBackup(f_value);
+    } else if(f_value == NULL) {
+      printf("the archive provided with the -f flag cannot be empty\n");
+      syslog(LOG_INFO, "the archive provided with the -f flag cannot be empty");
+    } else if(c_flag == 1) {
+      printf("-x and -c cannot be used together\n");
+      syslog(LOG_INFO, "-x and -c cannot be used together");
+    } else {
+      printf("-x cannot be used without -f\n");
+      syslog(LOG_INFO, "-x cannot be used without -f");
+    }
+  }
 
-  } else if((x_flag == 1 && f_flag == 1) && (filevalue != NULL && dirvalue != NULL)) {
-    printf("Estraggo l'archivio: %s\n", filevalue);
-    extractBackup(filevalue);
+  // C_FLAG
+  if(c_flag == 1) {
+    if(f_flag == 0) {
+      printf("-f flag is not present\n");
+      syslog(LOG_NOTICE, "-f flag is not present");
+    } else if(f_value == NULL) {
+      printf("no target provided for the -f flag\n");
+      syslog(LOG_NOTICE, "no target provided for the -f flag");
+    } else {
+      printf("ready to backup the provided folder\n");
+      syslog(LOG_INFO, "ready to backup the provided folder");
+      makeBackup(f_value);
+    }
+  }
 
-  } else if(t_flag == 1 && (filevalue == NULL && dirvalue == NULL)) {
-    printf("You must use the -f flag to specify the archive you want to analyze\n");
-
-  } else if ((t_flag == 1 && f_flag == 1) && filevalue != NULL) {
-    // Mostra il contenuto dell'archivio
-    showBackupContent(filevalue);
+  // F_FLAG
+  if(f_flag == 1) {
+    if(t_flag == 0 && x_flag == 0 && c_flag == 0) {
+      printf("-t flag requires a parameter: <the archive> as *.bpk\n");
+      syslog(LOG_INFO, "-t flag requires a parameter: <the archive> as *.bpk");
+    }
   }
 }
+
 
 // Metodo che contiene della breve documentazione che viene mostrato all'utente
 // se tenta di eseguire l'utility con un flag che non è stato implementato o se i
@@ -123,10 +150,10 @@ void manage() {
 
 void printHelp() {
   printf("Usage: mkbkp [-c] [-x] [-t] [-f]\n");
-  printf("\t -f to create or extract an archive");
+  printf("\t -f <archive>.bkp to create or extract an archive");
   printf("\n\t -c to create a new archive");
   printf("\n\t -x to extract an archive in the current directory");
-  printf("\n\t -t to display the content of an archive\n");
+  printf("\n\t -t <archive>.bkp to display the content of an archive\n");
 }
 
 // Metodo che si occupa di eseguire il backup di un file
@@ -139,11 +166,6 @@ void makeBackup(char* path) {
   DIR* dir;
   struct stat stbuf;
   int is_dir;
-  int access_err;
-
-  FILE *openedfile;
-  char* buffer = NULL;
-  int flength = 0;
 
   // La funzione opendir apre un directory stream.
   // Restituisce un puntatore ad un oggetto di tipo DIR in caso di successo e NULL in caso di errore.
@@ -162,17 +184,21 @@ void makeBackup(char* path) {
       continue;
     }
 
+    // Utilizza lo struct file per creare un nuovo file e di conseguenza memorizzare tutte le infomazioni su di esso
+    // Per prima cosa per alloco la quantità di memoria necessaria
     size_t length = strlen(path) + strlen(direntry -> d_name) + 2;
     char * concat = (char *) malloc(sizeof(char) * length);
     snprintf(concat, length, "%s/%s", path, direntry -> d_name);
     stat(concat, &stbuf);
 
-    // Legge la cartella corrente
+    // Legge la cartella corrente e concatena il nome del file
+    // alla path assoluta presa in input, così da avere il percorso completo
     getcwd(cwd, PATH_MAX_LENGTH);
     strcat(cwd, "/");
     strcat(cwd, filevalue);
 
     // Apro il file di backup in Append
+    // in questo modo posso concatenare i vari file che devo essere inseriti nel backup
     backup = fopen(cwd, "a+");
     if(backup == NULL) {
       perror(cwd);
@@ -182,7 +208,10 @@ void makeBackup(char* path) {
     // Bool che indica se è una directory
     is_dir = ((stbuf.st_mode & S_IFMT) == S_IFDIR);
 
-    // Se è una directory
+    // se viene rilevato che è una directory allora all'interno del file di backup
+    // viene utilizzato un divisore che indica che la stringa che segue a DIR= è
+    // la path di una directory che dovrà essere ricreata all'estrazione del file
+    // di backup
     if (is_dir) {
       strcpy(subpath, path);
       strcat(subpath, "/");
@@ -193,20 +222,34 @@ void makeBackup(char* path) {
 
       makeBackup(subpath);
     } else {
-      // allora è un file
+      // Nel caso contrario, cioè is_dir è falso, l'elemento analizzato è un file
+      // e si procede all'aggiunta dello stesso al file di backup
+
+      // Questa variabile è quella che contiene il file, viene chiusto ed inizializzato nuovamente
+      // ad ogni ciclo while, in questo modo ogni volta viene aggiunto un nuovo file
       str_file* temp;
 
+      // A questo punto viene allocato lo spazio di memoria necessario per il file
+      // che viene calcolato in basse alla dimensione di str_file
       temp = (str_file* ) malloc(sizeof(str_file));
+
+      // Concatena la path assoluta al nome del file in modo da avere il pathname
+      // completo. In questo modo possiamo salvare all'interno dell'archivio la posizione del file
+      // in modo da avere già pronto il percorso per l'estrazione; inoltre questo permette di identificare
+      // il file all'interno dell'archivio
       strcpy(temp -> path, path);
       strcat(temp -> path, "/");
       strcat(temp -> path, direntry -> d_name);
 
+      // Apre il file che contiene tutte informazioni già fornite sopra, inserite nello struct
       temp -> file = fopen(temp -> path, "rb");
       if(temp -> file == NULL) {
         perror(temp -> path);
         exit(EXIT_FAILURE);
       }
 
+      // Calcolo la dimensione del file e la memorizzo all'interno del relativo
+      // campo nello struct
       fseek(temp -> file, 0, SEEK_END);
       temp -> size = ftell(temp -> file);
       fseek(temp -> file, 0, SEEK_SET);
@@ -222,6 +265,7 @@ void makeBackup(char* path) {
       // Scrive il file appena letto all'interno dell'archivio
       fwrite(temp->line, 1, temp -> size, backup);
 
+      // Scrive all'interno del file di backup un divisore che identifica la fine di un file
       fprintf(backup, "\nENDFILE");
 
       fclose(temp -> file);
@@ -234,13 +278,28 @@ void makeBackup(char* path) {
   }
 
   closedir(dir);
+  syslog(LOG_INFO, "file written to the backup correctly");
 }
+
+// Funzione che controlla se una determinata stringa
+// inizia con un prefisso, const char* pre, passato in input
+// la stringa da controllare viene presa in input da un'altra
+// variabile chiamata const char* str
+// Ritorna in output 1 se la condizione è vera
+// 0 altrimenti
 
 int startsWithPre(const char *pre, const char *str) {
     size_t lenpre = strlen(pre),
            lenstr = strlen(str);
     return lenstr < lenpre ? 0 : strncmp(pre, str, lenpre) == 0;
 }
+
+// Funzione utilizzata per mostrare il contenuto di un archivio
+// Prende in inpute il path dell'archivio da analizzare, successivamente
+// crea un file con il path passato in input, lo analizza, e stampa a video i file trovati
+// La presenza di un file all'interno di un archivio viene rilevata in questo modo:
+//  Viene analizzata ogni riga di del file, se quella riga inizia con il separatore
+//  FILE= allora quella riga conterrà la path di un file da visualizzare in output
 
 void showBackupContent(char* archive) {
   char workingdir[PATH_MAX_LENGTH];
@@ -251,8 +310,6 @@ void showBackupContent(char* archive) {
   const char* pref = "FILE=";
 
   char buff[PATH_MAX_LENGTH];
-  char ch;
-  unsigned long chars;
 
   FILE* archivetoshow = fopen(workingdir, "r");
   if(archivetoshow == NULL) {
@@ -266,10 +323,12 @@ void showBackupContent(char* archive) {
     }
   }
   fclose(archivetoshow);
+  syslog(LOG_INFO, "utility showed content of the backup file correctly");
 }
 
 // Questo metodo viene utilizzato per creare le sottocartelle
-// ricorsivamente quando viene estratto un archivio
+// ricorsivamente quando viene estratto un archivio.
+// Questa funzione è stata ricavata da Internet.
 
 static void recursiveDirMake(const char *dir) {
     char tmp[256];
@@ -308,9 +367,6 @@ void extractBackup(char* archive) {
   char buff[PATH_MAX_LENGTH];
   char buff2[PATH_MAX_LENGTH];
 
-  char ch;
-  unsigned long chars;
-
   FILE* archivetoshow = fopen(workingdir, "r");
   if(archivetoshow == NULL) {
     perror(workingdir);
@@ -347,7 +403,7 @@ void extractBackup(char* archive) {
     // I File invece vengono memorizzati nel seguente modo:
     // 
     // FILE=<path assoluto del file>
-    // 
+    // \nENDFILE
 
     fclose(archivetoshow);
     FILE* archivetoshow = fopen(workingdir, "r");
@@ -359,7 +415,6 @@ void extractBackup(char* archive) {
 
     while(fgets(buff2, PATH_MAX_LENGTH, archivetoshow) != NULL) {
       if(startsWithPre(pref, buff2) == 1) {
-        printf("%s", buff2);
         char *token;
         char *search = "=";
 
@@ -368,7 +423,6 @@ void extractBackup(char* archive) {
 
         //è un file
         temp = fopen(token, "a+");
-        printf("%s\n", token );
         if(temp == NULL) {
           exit(EXIT_FAILURE);
         }
@@ -383,5 +437,6 @@ void extractBackup(char* archive) {
       }
     }
     fclose(archivetoshow); 
-  } 
+  }
+  syslog(LOG_INFO, "backup file was extraced correctly");
 }
