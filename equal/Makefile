@@ -7,18 +7,11 @@
 # FILE		= hello
 # OBJ           = hello.o
 
-equal: gcc -c 
+all:
+	gcc equal.c -o equal
 
-equal : equal.o lib_equal.o struct_stack.o.
-	gcc equal.o lib_equal.o struct_stack.o
-
-lib_equal.o : lib_equal.c.
-	gcc -c lib_equal.c
-
-struct_stack.o : struct_stack.c.
-	gcc -c struct_stack.c
+install:
+	cp equal /usr/bin/equal; chmod a+x /usr/bin/equal
 
 clean:
-	rm equal.o
-
-all: equal clean
+	rm -rf /usr/bin equal

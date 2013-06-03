@@ -14,6 +14,6 @@ install:
 	cd plive; make install; cd ../
 
 uninstall:
-	cd equal; make uninstall; cd ../
+	cd equal; make clean; cd ../
 	cd mkbkp; make uninstall; cd ../
 	cd plive; make uninstall; cd ../
