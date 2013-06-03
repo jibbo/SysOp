@@ -8,7 +8,7 @@
         Perantoni Nicola        151709
 */
 
-#include "mkbkp.h"
+#include "mkbkp_1.h"
 
 #define PATH_MAX_LENGTH 256
 
@@ -36,6 +36,9 @@ int c_flag = 0;
 int x_flag = 0;
 int t_flag = 0;
 
+char *f_value = NULL;
+char *t_value = NULL;
+
 int main(int argc, char **argv) {
   int c;
   opterr = 0;
@@ -44,12 +47,14 @@ int main(int argc, char **argv) {
   openlog(argv[0], LOG_CONS || LOG_PID, LOG_LOCAL0);
   
   // Utilizzo la syscall getopt() per i diversi flag utilizzati dall'applicazione
-  while ((c = getopt (argc, argv, "f:cxt")) != -1) {
+  while ((c = getopt (argc, argv, "f:cxt:")) != -1) {
     switch (c) {
       case 'f':
         f_flag = 1;
-        strcpy(filevalue, optarg);
-        //strcpy(dirvalue, argv[optind]); 
+        f_value = optarg;
+
+        // strcpy(filevalue, optarg);
+        // strcpy(dirvalue, argv[optind]); 
         break;
       case 'c':
         c_flag = 1;
@@ -59,19 +64,11 @@ int main(int argc, char **argv) {
         break;
       case 't':
         t_flag = 1;
+        t_value = optarg;
         break;
-      case '?':
-        if (optopt == 'f') {
-          fprintf(stderr, "Option -%c requires the archive as an argument\n", optopt);
-        } else if (isprint (optopt)) {
-          fprintf(stderr, "Unknown option '-%c'\n", optopt);
-          printHelp();
-        } else {
-          fprintf(stderr, "Unknown option character '\\x%x'.\n", optopt);
-        }
-        return 1;
       default:
-        abort ();
+        syslog(LOG_INFO, "Flag not available %s");
+        exit(EXIT_FAILURE);
     }
     manage();
   }
@@ -79,43 +76,59 @@ int main(int argc, char **argv) {
   return 0;
 }
 
-// Gestisco tutti i casi di input che posso ricevere dall'utente:
-// * se il flag -c è utilizzato ma sia il file che la directory sono nulli mostro che deve essere inserito un archivio
-//   utilizzando anche il flag -f
-// * se il flag -c e il flag -f sono a 1 ma non vengono inseriti nè un file nè una directory
-//   comunico all'utente che li deve inserire
-// * se viene utilizzato il flag -x per estrarre un archivio ma non viene specificato l'archivio allora
-//   viene visualizzato il relativo messaggio di errore
-// * se viene utilizzato il flag -x in concomitanza con il flag -f allora significa che l'utente ha utilizzato
-//   il primo dei due per segnalare di voler estrarre l'archivio passato come parametro utilizzando il flag -f
-// * se viene utilizzato il flag -t per visualizzare il contenuto di un archivio ma l'archivio non viene specificato
-//   come parametro mostro il relativo messaggio di errore
-// * infine, se vengono utilizzati sia il flag t ed il flag f allora eseguo il metodo che mostra
-//   il contenuto di un file di backup passato come parametro
+//
+//
+//
 
 void manage() {
-  if(c_flag == 1 && (filevalue == NULL && dirvalue == NULL)) {
-    printf("You must use the -f flag to specify the archive you want to create\n");
 
-  } else if((c_flag == 1 && f_flag == 1) && (filevalue != NULL && dirvalue != NULL)) {
-    // Crea l'archivio
-    printf("Creo l'archivio chiamato: %s della cartella: %s\n", filevalue, dirvalue);
-    makeBackup(dirvalue);
-  } else if(x_flag == 1 && (filevalue == NULL && dirvalue == NULL)) {
-    printf("You must use the -f flag to specify the archive you want to extract\n");
+  // T_FLAG
+  if(t_flag == 1) {
+    if(f_flag == 1 || x_flag == 1 || c_flag == 1) {
+      printf("il flag -t deve essere utilizzato senza altri flag, specificando il file di backup\n");
+      syslog(LOG_INFO, "-t flag must be used without any flags");
+    } else if(t_value == NULL) {
+      syslog(LOG_INFO, "-t requires a parameter");
+    } else {
+      syslog(LOG_INFO, "ready to show the archive content");
+      showBackupContent(filevalue);
+    }
+  }
 
-  } else if((x_flag == 1 && f_flag == 1) && (filevalue != NULL && dirvalue != NULL)) {
-    printf("Estraggo l'archivio: %s\n", filevalue);
-    extractBackup(filevalue);
+  // X_FLAG
+  if(x_flag == 1) {
+    if(f_flag == 1) {
+      syslog(LOG_INFO, "-x cannot be used without -f");
+    } else if(f_value == NULL) {
+      syslog(LOG_INFO, "the archive provided with the -f flag cannot be empty");
+    } else if(c_flag == 1) {
+      syslog(LOG_INFO, "-x and -c cannot be used together");
+    } else {
+      syslog(LOG_INFO, "ready for archive extraction");
+      extractBackup(filevalue);
+    }
+  }
 
-  } else if(t_flag == 1 && (filevalue == NULL && dirvalue == NULL)) {
-    printf("You must use the -f flag to specify the archive you want to analyze\n");
+  // C_FLAG
+  if(c_flag == 1) {
+    if(f_flag == 0) {
+      syslog(LOG_NOTICE, "-f flag is not present");
+    } else if(f_value == NULL) {
+      syslog(LOG_NOTICE, "non target provided for the -f flag");
+    } else {
+      syslog(LOG_INFO, "ready to backup the provided folder");
+      makeBackup(dirvalue);
+    }
+  }
 
-  } else if ((t_flag == 1 && f_flag == 1) && filevalue != NULL) {
-    // Mostra il contenuto dell'archivio
-    showBackupContent(filevalue);
+  // F_FLAG
+  if(f_flag == 1) {
+    syslog(LOG_INFO, "-t flag requires a parameter: <the archive> as *.bpk");
+  } else {
+    printHelp();
   }
 }
+
 
 // Metodo che contiene della breve documentazione che viene mostrato all'utente
 // se tenta di eseguire l'utility con un flag che non è stato implementato o se i

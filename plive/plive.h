@@ -38,16 +38,7 @@ typedef struct process_t
     char name[256];
     char status;
     int ppid;
-    int pgrp;
-    int session;
-    int tty;
-    int tpgid;
-    unsigned flags;
-    unsigned long minfaults;
-    unsigned long majfaults;
-    unsigned long utime;
-    unsigned long stime;
-    unsigned long ctime;
+    float utime;
 }PROC;
 
 //struct che rappresenta un processo 
@@ -105,3 +96,5 @@ int topTimes(PROC* before,PROC* after, MINI_PROC* out,int len1,int len2);
 //e copia tutto il contenuto di last
 //in old
 void copyProc(PROC* old,PROC* last,int len2);
+
+#endif

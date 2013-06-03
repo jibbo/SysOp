@@ -10,12 +10,6 @@
 
 #include "plive.h"
 
-//number of process show
-int n=10; 
-//refresh interval
-int seconds=1; 
-
-
 int main(int argc, char **argv) 
 {
     openlog(argv[0], LOG_CONS || LOG_PID, LOG_LOCAL0);
@@ -186,6 +180,8 @@ int  numberOfProcess()
     int nt=0;
     while ((dir = readdir(d)) != NULL)
     {
+      //guardo solo le cartelle che iniziano con numeri per essere
+      //sicuro che siano pid di processi  
       if(dir->d_name[0]>='0' && dir->d_name[0]<='9')
         nt++;
     }
@@ -213,11 +209,16 @@ int listOfProcess(PROC *proc, int len)
             if(f)
             {
                 //leggo il contenuto di /proc/pid/stat
-                fscanf(f,"%d %s %c %d %d %d %d %d %u %lu %lu %lu %lu %lu",
-                    &proc[i].pid,proc[i].name,&proc[i].status,&proc[i].ppid,
-                    &proc[i].pgrp,&proc[i].session,&proc[i].tty,&proc[i].tpgid,
-                    &proc[i].flags,&proc[i].minfaults,&proc[i].majfaults,
-                    &proc[i].utime,&proc[i].stime, &proc[i].ctime);
+                fscanf(f,"%d %s %c %d",
+                    &proc[i].pid,proc[i].name,&proc[i].status,&proc[i].ppid);
+                int j=0;
+                char* tmp = (char *) malloc(sizeof(char)*10);
+                while(j<10){
+                    fscanf(f,"%s",tmp);
+                    j++;
+                }
+                proc[i].utime=atof(tmp);
+                free(tmp);
                 //TODO remove parenthesis   
                 i++;
             }
@@ -287,7 +288,7 @@ int topTimes(PROC* before,PROC* after, MINI_PROC* out,int len1,int len2)
         strcpy(tmp[i].name,after[i].name);
         //calcolo la cpu utilizzata da ogni processo
         if(after[i].pid==before[i].pid)
-            tmp[i].cpu=(after[i].utime-before[i].utime)/seconds;
+            tmp[i].cpu=(after[i].utime-before[i].utime)/(1.0*seconds);
 
     }
     for(i=minlen-1;i<maxlen;i++)
@@ -297,7 +298,8 @@ int topTimes(PROC* before,PROC* after, MINI_PROC* out,int len1,int len2)
             tmp[i].pid=after[i].pid;
             tmp[i].ppid=after[i].ppid;
             strcpy(tmp[i].name,after[i].name);
-            tmp[i].cpu=after[i].utime/seconds;
+            //tmp[i].cpu=after[i].utime/seconds;
+            tmp[i].cpu=(float)after[i].utime;
         }
         else
         {
@@ -341,16 +343,7 @@ void copyProc(PROC* old,PROC* last,int len2)
         strcpy(old[i].name,last[i].name);
         old[i].status=last[i].status;
         old[i].ppid=last[i].ppid;
-        old[i].pgrp=last[i].pgrp;
-        old[i].session=last[i].session;
-        old[i].tty=last[i].tty;
-        old[i].tpgid=last[i].tpgid;
-        old[i].flags=last[i].flags;
-        old[i].minfaults=last[i].minfaults;
-        old[i].majfaults=last[i].majfaults;
         old[i].utime=last[i].utime;
-        old[i].stime=last[i].stime;
-        old[i].ctime=last[i].ctime;
     }
     free(last);
 }
