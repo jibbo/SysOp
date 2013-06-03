@@ -75,7 +75,7 @@ int main (int argc, char **argv) {
     else if(!is_dir1 && !is_dir2) {
 
         // I due percorsi rappresentano entrambi due files..
-        syslog(LOG_INFO, "Both paths %s and %s are files.", argv[1], argv[2]);
+        syslog(LOG_INFO, "Both paths (%s) and (%s) are files.", argv[1], argv[2]);
         diffBetweenFiles(argv[1], argv[2], indent);
     }
     else {
@@ -164,7 +164,7 @@ void diffBetweenFiles(char * path1, char * path2, int indent_limit) {
         char * pos_newline_ch;
 
         // Muovo i buffers utilizzati per il controllo in maniera parallela..
-        while(fgets(buf_file1, MAX_BUF_SIZE, file1->file) != NULL && fgets(buf_file2, MAX_BUF_SIZE, file2->file)) {
+        while(fgets(buf_file1, MAX_BUF_SIZE, file1->file) && fgets(buf_file2, MAX_BUF_SIZE, file2->file)) {
             if(strcmp(buf_file1, buf_file2) != 0) {
 
                 // E' stata riscontrata una differenza tra il contenuto letto nel primo file e quello letto nel secondo file.
@@ -257,11 +257,6 @@ int empty_directory(char * path) {
     return 1;
 }
 
-int nested_directories(char * dir1, char * dir2) {
-    //printf("%s e dentro %s\n",dir1, dir2);
-    return 1;
-}
-
 int are_equals_directories(char path1[256] , char path2[256]) {
 
     // Verifico se entrambe le directories sono vuote..
@@ -270,7 +265,8 @@ int are_equals_directories(char path1[256] , char path2[256]) {
 
     if (strcmp(path1,path2) == 0 || (empty_directory(path1) && empty_directory(path2))) {
         //printf("uguali\n");
-        return 1; }
+        return 1;
+    }
 
     //printf("ARE EQUAL DIR\n");
 
@@ -281,7 +277,8 @@ int are_equals_directories(char path1[256] , char path2[256]) {
 
     if (empty_directory(path1) ^ empty_directory(path2)) { 
         //printf("diverse\n");
-        return 0; }
+        return 0;
+    }
 
     struct dirent *dirent1, *dirent2;
     DIR *dir1, *dir2;
