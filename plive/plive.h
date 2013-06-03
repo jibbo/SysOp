@@ -74,6 +74,9 @@ void *updateVariables();
 //avoiding useless folder 
 int  numberOfProcess();
 
+//rimuove le parentesi dal nome dei processi
+void removeParentesis(char *in, char * out);
+
 //Riempe l'array di processi che deve guardare
 //ritorna il numero di cartelle in proc effettivamente utilizzate
 int listOfProcess(PROC *proc, int len) ;
