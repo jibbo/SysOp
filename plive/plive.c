@@ -14,7 +14,7 @@
         {
             openlog(argv[0], LOG_CONS || LOG_PID, LOG_LOCAL0);
 
-            syslog(LOG_INFO, "plive started: %s", argv[0]);
+            syslog(LOG_INFO, "started: %s", argv[0]);
 
             if(checkflag(argc,argv)!=-1) 
             {
@@ -45,13 +45,13 @@
                 sleep(seconds);
                 
             //leggo i nuovi dati
-                actualNumProc=numberOfProcess()+1;
+                actualNumProc=numberOfProcess();
                 PROC *proc = (PROC *) malloc(sizeof(PROC)*actualNumProc);
                 actualNumProc=listOfProcess(proc,actualNumProc);
                 qsort(proc, actualNumProc, sizeof(PROC), cmpPID);
                 
                 
-                MINI_PROC out[n];
+                MINI_PROC out[(n>actualNumProc)?actualNumProc:n];
             //float timeTotalAfter=getTotalTime();
                 int nloc=topTimes(old_proc,proc,out,numProcOld,actualNumProc);
                 
@@ -60,8 +60,8 @@
                 stmpNProc(out,nloc);
 
             //Aggiorno i dati per il prossimo "giro"
-                copyProc(old_proc,proc,nloc);
-                numProcOld=nloc;
+                copyProc(old_proc,proc,actualNumProc);
+                numProcOld=actualNumProc;
             }
             endwin();
         }
@@ -134,7 +134,7 @@ int checkflag(int argc, char **argv)
         }
         else
         {
-            syslog(stderr,"Unknown option character `\\x%x'.\n",optopt);
+            syslog(LOG_ERR,"Unknown option character `\\x%x'.\n",optopt);
             fprintf (stderr,"Unknown option character `\\x%x'.\n",optopt);
         }
         
@@ -278,70 +278,36 @@ int cmpCPU (const void * a, const void * b)
 //funzione principale
 int topTimes(PROC* before,PROC* after, MINI_PROC* out,int len1,int len2)
 {
-    int first=0;
-    int minlen=0;
-    int maxlen=0;
-    if(len2>len1)
-    {
-        minlen=len1;
-        maxlen=len2;
-        first=1;
-    }
-    else
-    {
-        minlen=len2;
-        maxlen=len1;
-        first=0;
-    }
-    if(first)
-        MINI_PROC tmp[maxlen];
-    else
-        MINI_PROC tmp[min];
+    MINI_PROC tmp[len2];
     int i=0;
 
-    for(i=0;i<minlen;i++)
+    for(i=0;i<len2;i++)
     {
         tmp[i].pid=after[i].pid;
         tmp[i].ppid=after[i].ppid;
         strcpy(tmp[i].name,after[i].name);
         //calcolo la cpu utilizzata da ogni processo
-        if(after[i].pid==before[i].pid)
-            tmp[i].cpu=(after[i].utime-before[i].utime)/(100.0*seconds);
+        int j=0;
+        while(after[i].pid!=before[j].pid && j<len1){j++;}
+        if(after[i].pid==before[j].pid)
+            if(after[i].utime-before[j].utime>0)
+                tmp[i].cpu=(after[i].utime-before[j].utime)/(100*seconds);
+            else
+                tmp[i].cpu=(before[i].utime-after[j].utime)/(100*seconds);
+        else
+            tmp[i].cpu=after[i].utime;
 
     }
-    for(i=minlen-1;i<maxlen;i++)
-    {
-        if(first)
-        {
-            tmp[i].pid=after[i].pid;
-            tmp[i].ppid=after[i].ppid;
-            strcpy(tmp[i].name,after[i].name);
-            //tmp[i].cpu=after[i].utime/seconds;
-            tmp[i].cpu=(float)after[i].utime;
-        }
-        /*else
-        {
-            tmp[i].pid=before[i].pid;
-            tmp[i].ppid=before[i].ppid;
-            strcpy(tmp[i].name,before[i].name);
-            tmp[i].cpu=-1;
-        }*/
-        
-    }
     //ordino l'array per utilizzo di cpu in modo crescente
-    qsort(tmp, maxlen, sizeof(MINI_PROC), cmpCPU);
+    qsort(tmp, len2, sizeof(MINI_PROC), cmpCPU);
     
     //questa e' per controllare che
     // l'utente non chieda piu' processi di
     //quelli  presenti nel sistema
-    int nloc;
-    if(first) 
-        nloc = (n>maxlen) ? maxlen:n;
-    else
-        nloc = (n>minlen) ? minlen:n;
+    int nloc = (n>len2) ? len2:n;
 
     //prendo i primi n processi
-    for(i=0;i<n;i++)
+    for(i=0;i<nloc;i++)
     {
         out[i].pid=tmp[i].pid;
         out[i].ppid=tmp[i].ppid;
@@ -356,8 +322,8 @@ int topTimes(PROC* before,PROC* after, MINI_PROC* out,int len1,int len2)
 //in old
 void copyProc(PROC* old,PROC* last,int len2)
 {
-    free(old);
-    old = (PROC *) malloc(sizeof(PROC)*len2+1);
+    //free(old);
+    old = (PROC *) malloc(sizeof(PROC)*len2);
     int i=0;
     for(i=0;i<len2;i++)
     {
@@ -366,6 +332,7 @@ void copyProc(PROC* old,PROC* last,int len2)
         old[i].status=last[i].status;
         old[i].ppid=last[i].ppid;
         old[i].utime=last[i].utime;
+        syslog(LOG_INFO," fine:%d",i);
     }
     free(last);
 }
