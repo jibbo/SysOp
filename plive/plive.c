@@ -192,9 +192,15 @@ int  numberOfProcess()
 //rimuove le parentesi dal nome dei processi
 void removeParentesis(char * in, char * out)
 {    int i=0;
+    //poiche' i processi nello stat vengono 
+    //memorizzati come (nome)
+    //mi basta iniziare a copiare da 1 
+    // e finire a strlen(nome letto)-1
     for(i=1;i<strlen(in)-1;i++){
         out[i-1]=in[i];
     }
+    //le stringe in C sono 0 terminated quindi
+    //lo aggiungo alla fine.
     out[i-1]='\0';
 }
 
