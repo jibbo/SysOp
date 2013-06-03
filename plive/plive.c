@@ -189,6 +189,21 @@ int  numberOfProcess()
     return nt;
 }
 
+//rimuove le parentesi dal nome dei processi
+void removeParentesis(char * in, char * out)
+{    int i=0;
+    //poiche' i processi nello stat vengono 
+    //memorizzati come (nome)
+    //mi basta iniziare a copiare da 1 
+    // e finire a strlen(nome letto)-1
+    for(i=1;i<strlen(in)-1;i++){
+        out[i-1]=in[i];
+    }
+    //le stringe in C sono 0 terminated quindi
+    //lo aggiungo alla fine.
+    out[i-1]='\0';
+}
+
 //Riempe l'array di processi che deve guardare
 //ritorna il numero di cartelle in proc effettivamente utilizzate
 int listOfProcess(PROC *proc, int len) 
@@ -208,18 +223,18 @@ int listOfProcess(PROC *proc, int len)
             f= fopen(path,"r");
             if(f)
             {
+                char* tmp = (char *) malloc(sizeof(char)*256);
                 //leggo il contenuto di /proc/pid/stat
                 fscanf(f,"%d %s %c %d",
-                    &proc[i].pid,proc[i].name,&proc[i].status,&proc[i].ppid);
+                    &proc[i].pid,tmp,&proc[i].status,&proc[i].ppid);
                 int j=0;
-                char* tmp = (char *) malloc(sizeof(char)*10);
+                removeParentesis(tmp,proc[i].name);
                 while(j<10){
                     fscanf(f,"%s",tmp);
                     j++;
                 }
                 proc[i].utime=atof(tmp);
-                free(tmp);
-                //TODO remove parenthesis   
+                free(tmp);  
                 i++;
             }
             fclose(f);
@@ -288,7 +303,7 @@ int topTimes(PROC* before,PROC* after, MINI_PROC* out,int len1,int len2)
         strcpy(tmp[i].name,after[i].name);
         //calcolo la cpu utilizzata da ogni processo
         if(after[i].pid==before[i].pid)
-            tmp[i].cpu=(after[i].utime-before[i].utime)/(1.0*seconds);
+            tmp[i].cpu=(after[i].utime-before[i].utime)/(100.0*seconds);
 
     }
     for(i=minlen-1;i<maxlen;i++)
@@ -299,7 +314,7 @@ int topTimes(PROC* before,PROC* after, MINI_PROC* out,int len1,int len2)
             tmp[i].ppid=after[i].ppid;
             strcpy(tmp[i].name,after[i].name);
             //tmp[i].cpu=after[i].utime/seconds;
-            tmp[i].cpu=(float)after[i].utime;
+            tmp[i].cpu=(float)after[i].utime/100.0;
         }
         else
         {

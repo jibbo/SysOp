@@ -6,6 +6,7 @@
 #define TAB "  "
 #define SLASH "/"
 #define MAX_BUF_SIZE 128
+#define MAX_PATH_LENGHT 256
 
 #include <sys/dir.h>
 #include <sys/stat.h>
@@ -46,11 +47,7 @@ int are_equals_directories(char *, char *);
 // Restituisce 1 se la cartella è vuota, 0 altrimenti.
 int empty_directory(char *);
 
-// Stampa la stringa passata come primo parametro secondo una tabulazione di grandezza definita dal secondo parametro.
-// Produce una stampa sulla console.
-void printIndented(char *, int);
-
-// Stampa un messaggio di Help per l'utilizzo corretto della utility.
+// Stampa un messaggio di Help per il corretto utilizzo della utility.
 void printHelp();
 
 #endif

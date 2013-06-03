@@ -3,9 +3,9 @@ SysOp
 
 [Gestion File Di Log]
 
-Per quanto riguarda la registrazione di tutte le attività (errori e messaggi di informazione), in tutte e tre le utilities sviluppate facciamo uso del demone di sistema "syslog", il quale permette di salvare dei messaggi di log aventi una priorità stabilità al momento della chiamata, salvandoli nel percorso di default /var/log/syslog.
-Questa scelta è dovuta al fatto che, con questo demone di sistema messo a disposizione da unix, i messaggi contengono la data e l'ora di quando sono stati generati, l'user id e il PID del processo che ha chimato la system call.
-Inoltre è possibile differenziare messaggi di errore da messaggi di warning, informazione oppure di critical conditions.
+Per quanto riguarda la registrazione di tutte le attività (errori e messaggi di informazione), in tutte e tre le utilities sviluppate facciamo uso del demone di sistema "syslog", il quale permette di salvare dei messaggi di log nel percorso di default /var/log/syslog.
+Questa scelta è dovuta al fatto che, con questo demone di sistema messo a disposizione da unix, i messaggi contengono la data e l'ora di quando sono stati invocati, l'user id e il PID del processo che ha chimato la system call.
+Inoltre è possibile differenziare messaggi di errore da messaggi di warning, di informazione oppure di critical conditions.
 
 Mkbkp [ PERANTONI ]
 ====
@@ -31,7 +31,7 @@ Le funzionalità richieste per l'utility mkbkp sono le seguenti:
 
 	* Per prima cosa viene letta la directory corrente dalla quale è stata eseguita l'utility: è stato assunto che il backup venga creato in quella directory.
 
-	* Successivamente l'utility inizia a leggere la cartella di cui fare il backup passata in inpute e vengono gestiti due casi diversi:
+	* Successivamente l'utility inizia a leggere la cartella di cui fare il backup passata in input e vengono gestiti due casi diversi:
 
 		* Se l'elemento corrente che viene letto è una cartella allora viene chiamata ricorsivamente la funzione di creazione del backup (passando come parametro la directory appena trovata) così, in questo modo, l'utility entra nella directory appena letta e può effettuare il backup al suo interno.
 
@@ -61,36 +61,41 @@ L'idea iniziale era quella di implementare la equal nel seguente modo:
 
 Nel caso in cui i due percorsi rappresentassero due files si effettuava un controllo incrociato, leggendo una porzione dal primo file e scorrendo tutto il secondo fino a trovarne una porzione uguale oppure fino a quando il secondo file fosse stato letto completamente. In questo modo saremmo riusciti ad ottenere correttamente le differenze tra i files fino a trovare una porzione comune.
 
-Per quanto riguarda le cartelle avremmo utilizzato la funzione adoperata per i files nel caso ci fossero stati due files omonimi; riconoscendo inoltre se la directory del primo path fosse contenuta nella directory del secondo path o viceversa.
+Per quanto riguarda le cartelle avremmo utilizzato la funzione adoperata per i files solo nel caso ci fossero stati due files omonimi.
 
 Our Solution:
 
-L' utility implementata è molto simile a quella già offerta da unix: la diff. Tuttavia differisce per alcune scelte implementative.
+L' utility implementata è molto simile a quella già offerta da unix: la diff. Tuttavia differisce dalla diff e dall' idea iniziale per alcune scelte implementative.
 Innanzitutto i percorsi passati per parametro devono essere compatibili: entrambi devono rappresentare files o directory. Non può quindi essere confrontato un file con una directory o viceversa.
 
-Se i due percorsi passati per parametro rappresentano due files allora per prima cosa si guarda se i percorsi sono uguali; in caso che di percorsi uguali ovviamente non viene stampato a video alcuna differenza perchè i files sono uguali.
-In caso contrario si procede ad una lettura per bytes del file: questa scelta è dovuta al fatto che i files che si desiderano comparare possono essere di qualsiasi tipo: testuali, media. archivi ecc.
-Diversamente dalla utility "diff" i buffers che procedono man mano ad esaminare i files si muovono in parallelo: si procede alla lettura del primo blocco di bytes.
-Se i buffer sono uguali si procede alla lettura del successivo blocco di bytes su entrambi i files (quindi senza stampare alcuna differenza a video), altrimenti vengono stampati entrambi i buffers a video differenziano con una '+' il buffer del primo file e con una '-' il buffer del secondo file.
+Se i due percorsi passati per parametro rappresentano due files allora per prima cosa si guarda se i percorsi sono uguali; se lo sono ovviamente non viene stampata a video alcuna differenza.
+In caso contrario si procede ad una lettura per bytes del file: questa scelta è dovuta al fatto che i files che si desiderano comparare possono essere di qualsiasi tipo: testuali, media, archivi ecc.
+Diversamente dalla utility "diff" i buffers che procedono man mano ad esaminare i files si muovono in parallelo: si procede alla lettura del primo blocco di bytes su entrambi i files.
+Se i buffers sono uguali si procede alla lettura del successivo blocco di bytes (sempre su entrambi i files) e senza stampare alcuna differenza a video.
+Se i buffers sono divertsi vengono stampati entrambi i buffers a video differenziano con una '+' il buffer del primo file e con una '-' il buffer del secondo file. Questo serve ad indicare che i bytes stampati con una + rappresentano una porzione di contenuto che è presente nel primo file e che differisce dal contenuto del secondo files nella stessa posizione.
 L'intera procedura viene ripetuta finchè i files non vengono letti completamente.
 Se i files hanno dimensione diversa si procederà a leggere la porzione di testo rimanente al file con dimensione maggiore.
 
-Nel caso si tratti di due directories, la procedura è diversa.
+Nel caso si tratti di due directories, la procedura è diversa e si utilizza un controllo "incrociato".
 Per prima cosa, vengono confrontati i due percorsi: se si tratta di percorsi uguali, anche le directory avranno lo stesso contenuto.
 Altrimenti, vengono letti tutti i files presenti nella prima cartella: ciascuno di esso viene confrontato con tutti i files presenti nella seconda cartella.
-Se si trovano files omonimi si applica la equal su entrambi i files; se invece la seconda cartella non contiene il file che si sta cercando, viene stampata in console il nome del file con una '+' ad indicare che la prima cartella contiene un file che non è presente nella seconda.
+Se si trovano files omonimi si applica la equal su entrambi i files e si procede a stamparne le differenze se presenti; se invece la seconda cartella non contiene il file che si sta cercando, viene stampata in console il nome del file con una '+' ad indicare che la prima cartella contiene un file che non è presente nella seconda.
 Se si trovano cartelle omonime si applica ricorsivamente la equal che analizza i files contenuti in esse.
 
-	equal A B  mostra a video le differenze che ha il (la) file (directory) A rispetto al (alla) file (directory) B.
-	equal A B  mostra a video le differenze che ha il (la) file (directory) B rispetto al (alla) file (directory) A.
+- equal A B  mostra a video le differenze che ha il (la) file (directory) A rispetto al (alla) file (directory) B.
+- equal B A  mostra a video le differenze che ha il (la) file (directory) B rispetto al (alla) file (directory) A.
+
+Nel caso di directories la funzione dirwalk che procede nel leggere tutti i files e directories presenti in esse viene invocata 2 volte:
+- la prima volta per mostrare i contenuti presenti nella prima directory che non sono presenti nella seconda;
+- la seconda volta per mostrare i contenuti che non sono presenti nella prima cartella ma che invece risultano essere presenti nella seconda.
 
 Usage:
 
-Per quanto riguarda i files è sufficiente passare i paths dei files typo. Es:
-	equal /home/user/file1.c /home/user/folder/file2.c
+* Per quanto riguarda i files è sufficiente passare i paths dei files typo. Es:
+	./equal /home/user/file1.c /home/user/folder/file2.c
 
-Per quanto riguarda le cartelle è sufficiente passare i paths delle cartelle omettendo l'ultimo SLASH. Es:
-	equal /home/user/folder1 /home/user/folder2
+* Per quanto riguarda le cartelle è sufficiente passare i paths delle cartelle omettendo l'ultimo SLASH. Es:
+	./equal /home/user/folder1 /home/user/folder2
 
 Examples:
 
@@ -156,9 +161,12 @@ Plive [ DE FRANCESCO ]
 Il comando plive e' un utility che mostra i processi in uso sulla macchina ordinati per utilizzo di cpu e filtrati da un numero arbitrario N che viene scelto dall'utente all'avvio. Inoltre l'utente puo' modificare l'intervallo di tempo in cui il programma aggiorna la lista.
 
 [La nostra soluzione]
-L'implementazione di un utility simile alla top ci ha fatto domandare innanzitutto in che modo potevamo ottenere dal S.O i processi attualmente attivi sulla macchina e questo ci ha portato a scoprire lo pseudo-filesystem contenuto nella cartella /proc/. Infatti dentro questa directory possiamo trovare delle sottocartelle che hanno per nome il PID dei processi in esecuzione sulla macchina, quindi ci rimaneva il problema di come calcolare la cpu effettivamente utilizzata dalla cpu trovare tutte le altre informazioni che ci servivano quali parent-id, nome del processo e qualcosa per calcolare la cpu utilizzata dal processo.
-Abbiamo notato che dentro ogni cartella di /proc/ c'e un file chiamato "stat" che contiene praticamente tutte le proprieta' su quel determinato processo e con questo abbiamo avuto tutte le informazioni necesserie ad iniziare a programmare.
-All'inizio abbiamo avuto qualche difficolta' a causa del linguaggio C a causa del suo essere a piu' basso livello dei linguaggi di porgrammazione a cui siamo abituati ma siamo riusciti a superarle tutte.
+L'implementazione di un utility simile alla top ci ha fatto domandare innanzitutto in che modo potevamo ottenere dal S.O i processi attualmente attivi sulla macchina e questo ci ha portato a scoprire lo pseudo-filesystem contenuto nella cartella /proc/. Infatti dentro questa directory possiamo trovare delle sottocartelle che hanno per nome il PID dei processi in esecuzione sulla macchina, quindi ci rimaneva il problema di come calcolare la cpu effettivamente utilizzata dal processo  e trovare tutte le altre informazioni che ci servivano quali parent-id e nome del processo.
+Abbiamo quindi notato che dentro ogni cartella di /proc/ c'e un file chiamato "stat" che contiene praticamente tutte le proprieta' su quel determinato processo e con questo abbiamo avuto tutte le informazioni necessarie ad iniziare a programmare.
+All'inizio abbiamo avuto qualche difficolta' sul linguaggio C a causa del suo essere a piu' basso livello dei linguaggi di programmazione a cui siamo abituati ma siamo riusciti a superarle tutte.
+Altre piccole difficolta' che abbiamo riscontrato sono state le quantita' di memoria da alloccare per il PID e per il nome del processo. Il primo lo abbiamo risolto sapendo che poiche' i PID fanno da nomi a cartelle il massimo nome che un file puo' avere su Ext2 e Ext3 e' 255. In seguito abbiamo scoperto che il massimo PID puo' essere letto da /proc/sys/kernel/pid_max  e che 255 andava bene per il numero di default.
+Il secondo problema e' stato un po' piu' difficile perche' potenzialmente un  programmatore puo' dare un qualsiasi nome ad un processo e quindi abbiamo semplicemente assunto che un nome non superasse i 255 caratteri.
+
 L'unica cosa che ancora adesso ci lascia un po' perplessi e' il calcolo della cpu utilizzata da un processo poiche' abbiamo provato le seguenti formule:
 
 	((tempo del processo in kernel mode letto adesso + tempo del processo il user mode letto adesso)-(tempo del processo in kernel mode + tempo del processo il user mode))
