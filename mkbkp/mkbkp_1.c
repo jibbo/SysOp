@@ -53,6 +53,8 @@ int main(int argc, char **argv) {
         f_flag = 1;
         f_value = optarg;
 
+        printf("%s\n", f_value);
+
         // strcpy(filevalue, optarg);
         // strcpy(dirvalue, argv[optind]); 
         break;
@@ -67,7 +69,7 @@ int main(int argc, char **argv) {
         t_value = optarg;
         break;
       default:
-        syslog(LOG_INFO, "Flag not available %s");
+        syslog(LOG_INFO, "Flag not available");
         exit(EXIT_FAILURE);
     }
     manage();
@@ -117,7 +119,8 @@ void manage() {
       syslog(LOG_NOTICE, "non target provided for the -f flag");
     } else {
       syslog(LOG_INFO, "ready to backup the provided folder");
-      makeBackup(dirvalue);
+      printf("%s\n", f_value);
+      makeBackup(f_value);
     }
   }
 
@@ -360,7 +363,7 @@ void extractBackup(char* archive) {
     // I File invece vengono memorizzati nel seguente modo:
     // 
     // FILE=<path assoluto del file>
-    // 
+    // \nENDFILE
 
     fclose(archivetoshow);
     FILE* archivetoshow = fopen(workingdir, "r");
