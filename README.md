@@ -94,7 +94,7 @@ Usage:
 * Per quanto riguarda le cartelle è sufficiente passare i paths delle cartelle omettendo l'ultimo SLASH. Es:
 	./equal /home/user/folder1 /home/user/folder2
 
-* Examples:
+Examples:
 
 	/home/roberto/Scrivania/folder1							/home/roberto/Scrivania/folder2
 	├── file1.txt 															├── file1.txt
