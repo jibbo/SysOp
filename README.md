@@ -39,7 +39,7 @@ Le funzionalità richieste per l'utility mkbkp sono le seguenti:
 
 			* Abbiamo implementato un separatore che identifica i singoli file e aiuta anche nella fase di estrazione dello stesso, consiste in:
 
-				- FILE=<path assoluto del file>
+				- FILE=path assoluto del file
     			  \nENDFILE	 
 
 		* Se non ci sono più file l'esecuzione della funzione di creazione del backup termina, altrimenti vengono eseguite le medesime operazioni ricorsivamente fino a quando non sono state passate tutte le sottodirectory e tutti i file presenti all'interno della cartella presa in input.
