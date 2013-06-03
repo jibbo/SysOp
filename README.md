@@ -22,7 +22,7 @@ Le funzionalità richieste per l'utility mkbkp sono le seguenti:
 
 	* -c permette di creare un archivio. Devono essere passati come parametri il nome dell'archivio da creare (con relativa estensione, ad es: file.bkp); se l'estensione non viene specificata verrà comunque aggiunta automaticamente. Viene assunto che durante la creazione dell'archivio lo stesso venga creato nella cartella corrente di lavoro, cioè quella da dove viene eseguita l'utility.
 
-		> ./mkbkp -c - f <file>.bkp /<folder di cui fare il backup>
+		> ./mkbkp -c - f <file>.bkp /folder di cui fare il backup
 
 	* -x permette di estrarre un archivio nella directory corrente. Per utilizzare questa funzionalità oltre al flag -x deve essere utilizzato il flag -f per specificare il nome dell'archivio da estrarre.
 
