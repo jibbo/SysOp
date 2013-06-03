@@ -11,7 +11,7 @@ all:
 	gcc equal.c -o equal
 
 install:
-	cp equal /usr/bin/equal; chmod a+x /usr/bin/equal
+	cp equal /usr/bin/equal && chmod a+x /usr/bin/equal
 
 clean:
 	rm -rf /usr/bin equal
