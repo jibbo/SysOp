@@ -56,6 +56,7 @@ Le funzionalità richieste per l'utility mkbkp sono le seguenti:
 
 	* Nella creazione di un archivio di backup deve essere inserito il percorso assoluto della cartella della quale si vuole fare il backup
 	* L'archivio viene in ogni caso creato nella cartella corrente di lavoro, cioè quella da cui viene lanciata l'utility; la stessa cosa vale per l'estrazione
+	* L'utility si blocca se il file di backup contiene righe vuote, inoltre, i file contengono un punto di domanda alla fine dell'estensione
 
 Equal [ ZEN ]
 =====
