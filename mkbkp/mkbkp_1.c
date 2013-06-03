@@ -51,12 +51,7 @@ int main(int argc, char **argv) {
     switch (c) {
       case 'f':
         f_flag = 1;
-        f_value = optarg;
-
-        printf("%s\n", f_value);
-
-        // strcpy(filevalue, optarg);
-        // strcpy(dirvalue, argv[optind]); 
+        f_value = optarg; 
         break;
       case 'c':
         c_flag = 1;
@@ -72,28 +67,37 @@ int main(int argc, char **argv) {
         syslog(LOG_INFO, "Flag not available");
         exit(EXIT_FAILURE);
     }
-    manage();
+    
   }
+
+  manage();
 
   return 0;
 }
 
-//
-//
-//
+// Funzione che gestisce tutte le condizioni di input che può avere l'utility
+// se viene utilizzato il flag -t allora viene segnalato che il suddetto flag non può essere utilizzato insieme ad altri
+// infatti per mostrare il contenuto di un file bisogna eseguire: ./mkbkp -t <nomefile>.bkp
+
+// se viene utilizzato il flag -x avviene il medesimo controllo, con la differenza che viene controllato
+// che sia presente anche il flag -f perché quel flag serve ad indicare il file da estrarre
+
+// se viene utilizzato il flag -c vale la medesima condizione che è già stata illustrata per il flag -x
+// con la differenza che in questo caso viene esguito il backup di un file.
+
+// se viene passato input slo
 
 void manage() {
 
   // T_FLAG
   if(t_flag == 1) {
     if(f_flag == 1 || x_flag == 1 || c_flag == 1) {
-      printf("il flag -t deve essere utilizzato senza altri flag, specificando il file di backup\n");
       syslog(LOG_INFO, "-t flag must be used without any flags");
     } else if(t_value == NULL) {
       syslog(LOG_INFO, "-t requires a parameter");
     } else {
       syslog(LOG_INFO, "ready to show the archive content");
-      showBackupContent(filevalue);
+      showBackupContent(t_value);
     }
   }
 
@@ -107,7 +111,7 @@ void manage() {
       syslog(LOG_INFO, "-x and -c cannot be used together");
     } else {
       syslog(LOG_INFO, "ready for archive extraction");
-      extractBackup(filevalue);
+      extractBackup(t_value);
     }
   }
 
@@ -127,8 +131,6 @@ void manage() {
   // F_FLAG
   if(f_flag == 1) {
     syslog(LOG_INFO, "-t flag requires a parameter: <the archive> as *.bpk");
-  } else {
-    printHelp();
   }
 }
 
@@ -139,10 +141,10 @@ void manage() {
 
 void printHelp() {
   printf("Usage: mkbkp [-c] [-x] [-t] [-f]\n");
-  printf("\t -f to create or extract an archive");
+  printf("\t -f <archive>.bkp to create or extract an archive");
   printf("\n\t -c to create a new archive");
   printf("\n\t -x to extract an archive in the current directory");
-  printf("\n\t -t to display the content of an archive\n");
+  printf("\n\t -t <archive>.bkp to display the content of an archive\n");
 }
 
 // Metodo che si occupa di eseguire il backup di un file
@@ -375,7 +377,6 @@ void extractBackup(char* archive) {
 
     while(fgets(buff2, PATH_MAX_LENGTH, archivetoshow) != NULL) {
       if(startsWithPre(pref, buff2) == 1) {
-        printf("%s", buff2);
         char *token;
         char *search = "=";
 
@@ -384,7 +385,6 @@ void extractBackup(char* archive) {
 
         //è un file
         temp = fopen(token, "a+");
-        printf("%s\n", token );
         if(temp == NULL) {
           exit(EXIT_FAILURE);
         }

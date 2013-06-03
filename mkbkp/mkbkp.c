@@ -14,6 +14,7 @@
 
 // Struct utilizzato per gestire l'inizializzazione del file
 // di backup quando viene costruito (durante la creazione)
+
 typedef struct {
   char path[PATH_MAX_LENGTH];
   FILE* file;
@@ -22,15 +23,20 @@ typedef struct {
   ssize_t read;
 } str_file;
 
+// Per mostrare il contenuto di un file
+// e per l'estrazione viene utilizzata una variabile di tipo file
+
 FILE* backup;
 
 // Stringhe utilizzate per gestire le directory
+
 char filevalue[PATH_MAX_LENGTH];
 char dirvalue[PATH_MAX_LENGTH];
 char cwd[PATH_MAX_LENGTH];
 char subpath[PATH_MAX_LENGTH];
 
 // Variabili che gestiscono i flag della syscall getopt()
+
 int f_flag = 0;
 int c_flag = 0;
 int x_flag = 0;
@@ -49,7 +55,14 @@ int main(int argc, char **argv) {
       case 'f':
         f_flag = 1;
         strcpy(filevalue, optarg);
-        //strcpy(dirvalue, argv[optind]); 
+        
+        if(strcpy(dirvalue, argv[optind]) != NULL) {
+          printf("%s\n", dirvalue);
+          strcpy(dirvalue, argv[optind]);
+        } else {
+          continue;
+        }
+
         break;
       case 'c':
         c_flag = 1;
@@ -111,8 +124,9 @@ void manage() {
   } else if(t_flag == 1 && (filevalue == NULL && dirvalue == NULL)) {
     printf("You must use the -f flag to specify the archive you want to analyze\n");
 
-  } else if ((t_flag == 1 && f_flag == 1) && filevalue != NULL) {
+  } else if ((t_flag == 1 && f_flag == 1) && (filevalue != NULL) {
     // Mostra il contenuto dell'archivio
+    printf("%s\n", filevalue);
     showBackupContent(filevalue);
   }
 }
@@ -148,6 +162,7 @@ void makeBackup(char* path) {
   // La funzione opendir apre un directory stream.
   // Restituisce un puntatore ad un oggetto di tipo DIR in caso di successo e NULL in caso di errore.
   // Inoltre posiziona lo stream sulla prima voce contenuta nella directory.
+
   if ((dir = opendir(path)) == NULL) { 
       printf("Can't open the folder %s\n", path);
       syslog(LOG_INFO, "Can't open the folder %s", path);
@@ -157,6 +172,7 @@ void makeBackup(char* path) {
   // La funzione readdir legge la voce corrente nella directory, posizionandosi sulla voce successiva.
   // Restituisce un puntatore al directory stream in caso di successo e NULL in caso di errore.
   // Loop on directory entries
+
   while ((direntry = readdir(dir)) != NULL) {
     if (strcmp(direntry -> d_name, ".") == 0 || strcmp(direntry -> d_name, "..") == 0) {
       continue;
@@ -236,11 +252,25 @@ void makeBackup(char* path) {
   closedir(dir);
 }
 
+// Funzione che controlla se una determinata stringa
+// inizia con un prefisso, const char* pre, passato in input
+// la stringa da controllare viene presa in input da un'altra
+// variabile chiamata const char* str
+// Ritorna in output 1 se la condizione è vera
+// 0 altrimenti
+
 int startsWithPre(const char *pre, const char *str) {
     size_t lenpre = strlen(pre),
            lenstr = strlen(str);
     return lenstr < lenpre ? 0 : strncmp(pre, str, lenpre) == 0;
 }
+
+// Funzione utilizzata per mostrare il contenuto di un archivio
+// Prende in inpute il path dell'archivio da analizzare, successivamente
+// crea un file con il path passato in input, lo analizza, e stampa a video i file trovati
+// La presenza di un file all'interno di un archivio viene rilevata in questo modo:
+//  Viene analizzata ogni riga di del file, se quella riga inizia con il separatore
+//  FILE= allora quella riga conterrà la path di un file da visualizzare in output
 
 void showBackupContent(char* archive) {
   char workingdir[PATH_MAX_LENGTH];
@@ -270,6 +300,7 @@ void showBackupContent(char* archive) {
 
 // Questo metodo viene utilizzato per creare le sottocartelle
 // ricorsivamente quando viene estratto un archivio
+// questa funzione è stata ricavata da Internet.
 
 static void recursiveDirMake(const char *dir) {
     char tmp[256];
@@ -366,7 +397,6 @@ void extractBackup(char* archive) {
         token = strtok(buff2, search);
         token = strtok(NULL, search);
 
-        //è un file
         temp = fopen(token, "a+");
         printf("%s\n", token );
         if(temp == NULL) {

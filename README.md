@@ -52,6 +52,11 @@ Le funzionalità richieste per l'utility mkbkp sono le seguenti:
 
 	* Se invece che un file viene riconosciuta una directory durante il parsing del file di backup allora viene creata una directory secondo la path indicata all'interno del file di backup.
 
+- L'utility presenta alcune limitazioni:
+
+	* Nella creazione di un archivio di backup deve essere inserito il percorso assoluto della cartella della quale si vuole fare il backup
+	* L'archivio viene in ogni caso creato nella cartella corrente di lavoro, cioè quella da cui viene lanciata l'utility; la stessa cosa vale per l'estrazione
+
 Equal [ ZEN ]
 =====
 
